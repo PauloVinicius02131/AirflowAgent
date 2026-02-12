@@ -27,7 +27,7 @@ services:
         condition: service_started
 
     environment: &airflow-common-env
-      AIRFLOW_UID: ${AIRFLOW_UID:-1000}
+      AIRFLOW_UID: ${AIRFLOW_UID:-1001}
       AIRFLOW__CORE__EXECUTOR: CeleryExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
       AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
