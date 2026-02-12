@@ -1,0 +1,19 @@
+# Ignore todas as pastas __pycache__ em qualquer nível de subdiretório
+**/__pycache__/
+
+# Ignore todos os arquivos .pyc
+*.pyc
+
+# Ignorar o venv
+venv/
+
+# Ignorar log
+*.log
+
+# Ignorar past logs
+logs/
+
+# Ignorar config.ini
+config.ini
+
+.env
