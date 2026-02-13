@@ -20,4 +20,4 @@ config.ini
 
 auth/
 
-/config
+config/
