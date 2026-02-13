@@ -3,6 +3,12 @@ FROM apache/airflow:3.1.7
 
 USER root
 
+# 1. Ajuste do Usuário: Mudamos o UID do airflow para 1001. 
+# Não tentamos modificar o grupo, apenas garantimos que o usuário 1001 exista e 
+# pertença ao grupo 0 (root), que já tem as permissões necessárias.
+RUN usermod -u 1001 airflow && gpasswd -a airflow root
+
+
 # ----------------------------
 # System deps + MS ODBC + tools (bcp/sqlcmd)
 # ----------------------------
@@ -33,14 +39,16 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # ----------------------------
-# Permissions (Airflow write access)
+# Permissions (Ajustadas para o UID 1001 e Grupo Root)
 # ----------------------------
 RUN set -eux; \
     mkdir -p /opt/airflow/config /opt/airflow/auth /opt/airflow/logs /opt/airflow/dags /opt/airflow/plugins; \
-    chown -R airflow:0 /opt/airflow/config /opt/airflow/auth /opt/airflow/logs /opt/airflow/dags /opt/airflow/plugins; \
-    chmod -R g+rwX /opt/airflow/config /opt/airflow/auth /opt/airflow/logs /opt/airflow/dags /opt/airflow/plugins
+    # Mudamos a posse para o UID 1001 e GID 0
+    chown -R 1001:0 /opt/airflow /home/airflow; \
+    chmod -R g+rwX /opt/airflow /home/airflow
 
-USER airflow
+# Voltamos para o usuário 1001 (o seu 'paulo' do WSL)
+USER 1001
 
 # ----------------------------
 # IMPORTANT: Install Python deps with Airflow constraints

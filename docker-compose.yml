@@ -35,7 +35,7 @@ services:
 
       # Auth (Airflow 3 - SimpleAuthManager)
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin,paulo:admin"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /opt/airflow/auth/simple_auth_manager_passwords.json.generated
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /opt/airflow/auth/passwords.json
 
       # Config file path (fica em volume nomeado, permissões OK)
       AIRFLOW_CONFIG: /opt/airflow/config/airflow.cfg
@@ -52,14 +52,11 @@ services:
       AIRFLOW__WEBSERVER__BASE_URL: "http://localhost:8080"
 
     volumes: &airflow-common-vols
-      # Host mounts (você edita no Windows/WSL)
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-
-      # Volumes nomeados (evitam PermissionError)
-      - airflow-config:/opt/airflow/config
-      - airflow-auth:/opt/airflow/auth
+          - ./dags:/opt/airflow/dags
+          - ./logs:/opt/airflow/logs
+          - ./plugins:/opt/airflow/plugins
+          - ./config:/opt/airflow/config # Mudei para bind mount também
+          - ./auth:/opt/airflow/auth     # Mudei de volume nomeado para pasta local
 
     # Init SEM db check (db check é o que estava disparando o create do cfg)
     command: >
@@ -145,5 +142,3 @@ services:
 
 volumes:
   postgres-db-volume:
-  airflow-config:
-  airflow-auth:
