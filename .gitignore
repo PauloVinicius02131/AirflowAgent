@@ -19,3 +19,5 @@ config.ini
 .env
 
 auth/
+
+/config
