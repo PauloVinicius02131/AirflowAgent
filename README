@@ -1,0 +1,178 @@
+./
+├── .env
+├── .gitignore
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── teste.py
+├── .git/
+│   ├── COMMIT_EDITMSG
+│   ├── FETCH_HEAD
+│   ├── HEAD
+│   ├── ORIG_HEAD
+│   ├── config
+│   ├── description
+│   ├── index
+│   ├── branches/
+│   ├── hooks/
+│   │   ├── applypatch-msg.sample
+│   │   ├── commit-msg.sample
+│   │   ├── fsmonitor-watchman.sample
+│   │   ├── post-update.sample
+│   │   ├── pre-applypatch.sample
+│   │   ├── pre-commit.sample
+│   │   ├── pre-merge-commit.sample
+│   │   ├── pre-push.sample
+│   │   ├── pre-rebase.sample
+│   │   ├── pre-receive.sample
+│   │   ├── prepare-commit-msg.sample
+│   │   ├── push-to-checkout.sample
+│   │   ├── sendemail-validate.sample
+│   │   └── update.sample
+│   ├── info/
+│   │   └── exclude
+│   ├── logs/
+│   │   ├── HEAD
+│   │   └── refs/
+│   │       ├── heads/
+│   │       │   └── main
+│   │       └── remotes/
+│   │           └── origin/
+│   │               └── main
+│   ├── objects/
+│   │   ├── 0a/
+│   │   │   └── 61ff59f23961fb3bed49b5b9c853a658050c40
+│   │   ├── 0c/
+│   │   │   └── 651c81cbe26672f909f78ed4776a4c7620bd85
+│   │   ├── 0e/
+│   │   │   └── 2e63cb1be943eca8dd77e103afeb8d5346629b
+│   │   ├── 0f/
+│   │   │   └── b9a65e61e8099ffa66bec2d3e47a00337281d0
+│   │   ├── 14/
+│   │   │   └── d1ee6355d6e0abf86f3178139ec2eb3d74fd81
+│   │   ├── 19/
+│   │   │   └── d831703fdea39c81b30a5f491a7aa79b5b85a4
+│   │   ├── 1a/
+│   │   │   └── 002c51d9e5aae038f1d262729a8430852fae3e
+│   │   ├── 37/
+│   │   │   └── 23d92b3d638276ac853dfea49f2fb410cb9b8e
+│   │   ├── 38/
+│   │   │   └── a63b41fe7cc89296d6211a727bb13c4969cb0f
+│   │   ├── 3e/
+│   │   │   └── 3c8f41a20813b59c0749642d9a0172bc678774
+│   │   ├── 42/
+│   │   │   └── 8658508a4be24a4637ac85f8f31c24760797a8
+│   │   ├── 53/
+│   │   │   ├── a0812727d20fb9a2440e99a8b0ed52ca5a99cc
+│   │   │   └── bb9ac272d7630927043b1449cbac0dd29a72e4
+│   │   ├── 55/
+│   │   │   └── e5df5f335e1f8611ca0df9b51743e09a0789d6
+│   │   ├── 67/
+│   │   │   └── c1627ed26cc997c6890127851de8069e8fa067
+│   │   ├── 71/
+│   │   │   └── 43afd1f81bea081de1d817e379d3f4b9039541
+│   │   ├── 73/
+│   │   │   └── 063a5160e32f927ad09e92b0b0a4892519690d
+│   │   ├── 89/
+│   │   │   └── ea881b7d80b6d751a08c4a55791f09cda756e5
+│   │   ├── a2/
+│   │   │   └── f81e26a503dc620f71d99dbd9cbe04fc014df6
+│   │   ├── a6/
+│   │   │   └── e32a9b85e5c6791b6fc9bda351028d48b846e9
+│   │   ├── b6/
+│   │   │   └── c726a463211ef39a0df86870f6ab3adcafc085
+│   │   ├── be/
+│   │   │   └── 111b91ba4a67a291762ea5674abb79279a126f
+│   │   ├── bf/
+│   │   │   ├── 1c76ea2c12d3e7d1298ff717f35a3f9da0c672
+│   │   │   └── 45fb18b0d70c1cd21df436eb2ce71a446664ff
+│   │   ├── c7/
+│   │   │   └── c9203f1309696dafa97ecd11fa4592afaaedef
+│   │   ├── c8/
+│   │   │   └── a88b96edf46ef96f157210212e2858ba21e9ed
+│   │   ├── cc/
+│   │   │   ├── 586db3398f8f78323e5aca2cb52126ba37bb91
+│   │   │   └── fb42197d26449015dd3c1217ec1769ef3a7299
+│   │   ├── d5/
+│   │   │   └── 0cd1d4c7b84c3e8851279d481e0700e8095206
+│   │   ├── e2/
+│   │   │   ├── 76e1cc1d8cd88a3953362c2e11053c3f4f1cc8
+│   │   │   └── 7a1fe80982c5bf676cf4dbe5ecef4af0a1b828
+│   │   ├── e7/
+│   │   │   └── c6b901e4bdca16a8af351d33fc0c2741911a07
+│   │   ├── e9/
+│   │   │   └── f735586c9a06e1e685ff26a3a247dfefb5fe11
+│   │   ├── eb/
+│   │   │   └── d35f07f2ca8b8cf7db7bd8a9ec83de63431994
+│   │   ├── f8/
+│   │   │   └── c43eed3fbb0b5c81239772518ff86afa9a46fc
+│   │   ├── fb/
+│   │   │   ├── 3d9bab82f6771ee1707e6543c39f87d917ac59
+│   │   │   └── 878c597d8f61f0aaee5c0c63100cc75b756500
+│   │   ├── info/
+│   │   └── pack/
+│   └── refs/
+│       ├── heads/
+│       │   └── main
+│       ├── remotes/
+│       │   └── origin/
+│       │       └── main
+│       └── tags/
+├── auth/
+│   ├── passwords.json
+│   └── volvo_connect_credentials.json
+├── config/
+│   └── airflow.cfg
+├── dags/
+│   ├── teste.py
+│   └── __pycache__/
+│       └── teste.cpython-312.pyc
+├── logs/
+│   ├── dag_id=00_sanity_check_ambiente/
+│   │   ├── run_id=manual__2026-02-12T18:51:03.626048+00:00/
+│   │   │   └── task_id=validar_drivers_e_permissoes/
+│   │   │       └── attempt=1.log
+│   │   ├── run_id=manual__2026-02-12T18:52:46.408408+00:00/
+│   │   │   └── task_id=validar_drivers_e_permissoes/
+│   │   │       └── attempt=1.log
+│   │   ├── run_id=manual__2026-02-12T18:56:47.828090+00:00/
+│   │   │   └── task_id=validar_drivers_e_permissoes/
+│   │   │       └── attempt=1.log
+│   │   ├── run_id=manual__2026-02-12T18:59:25.619386+00:00/
+│   │   │   └── task_id=validar_drivers_e_permissoes/
+│   │   │       └── attempt=1.log
+│   │   ├── run_id=manual__2026-02-12T19:00:21.303406+00:00/
+│   │   │   └── task_id=validar_drivers_e_permissoes/
+│   │   │       └── attempt=1.log
+│   │   ├── run_id=manual__2026-02-12T19:22:37.683745+00:00/
+│   │   │   └── task_id=validar_drivers_e_permissoes/
+│   │   │       └── attempt=1.log
+│   │   ├── run_id=manual__2026-02-12T19:30:17.783820+00:00/
+│   │   │   └── task_id=validar_drivers_e_permissoes/
+│   │   │       └── attempt=1.log
+│   │   └── run_id=manual__2026-02-13T12:01:12.006774+00:00/
+│   │       └── task_id=validar_drivers_e_permissoes/
+│   │           └── attempt=1.log
+│   └── dag_processor/
+│       ├── 2026-02-12/
+│       │   └── dags-folder/
+│       │       └── teste.py.log
+│       ├── 2026-02-13/
+│       │   └── dags-folder/
+│       │       └── teste.py.log
+│       ├── 2026-02-18/
+│       │   └── dags-folder/
+│       │       └── teste.py.log
+│       └── latest/
+│           └── dags-folder/
+│               └── teste.py.log
+├── plugins/
+└── src/
+    ├── Extract/
+    │   ├── __init__.py
+    │   └── VolvoConnect/
+    │       └── Vehicles.py
+    ├── Load/
+    │   └── VolvoConnect/
+    └── Transform/
+        └── dao.py

@@ -33,6 +33,8 @@ services:
       AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
       AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
 
+      PYTHONPATH: /opt/airflow/src
+
       # Auth (Airflow 3 - SimpleAuthManager)
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin,paulo:admin"
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /opt/airflow/auth/passwords.json
@@ -57,6 +59,7 @@ services:
           - ./plugins:/opt/airflow/plugins
           - ./config:/opt/airflow/config # Mudei para bind mount também
           - ./auth:/opt/airflow/auth     # Mudei de volume nomeado para pasta local
+          - ./src:/opt/airflow/src
 
     # Init SEM db check (db check é o que estava disparando o create do cfg)
     command: >
