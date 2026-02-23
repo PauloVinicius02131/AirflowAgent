@@ -1,0 +1,992 @@
+swagger: '2.0'
+info:
+  description: >-
+    Returns driver and vehicle utilization scores for a fleet over a given time
+    period. Scores are presented based on what solution the vehicle belongs to.
+    0-100 for Volvo Connect and 0-10 for Optifleet.
+  version: 2.0.2
+  title: Volvo Group scores API
+host: api.volvotrucks.com
+basePath: /score
+securityDefinitions:
+  basicAuth:
+    type: basic
+security:
+  - basicAuth: []
+schemes:
+  - https
+parameters:
+  requestId:
+    name: requestId
+    in: query
+    description: >-
+      A client unique request id used for fault tracing at the API supplier.
+      This shall be unique for each request if used.
+    required: false
+    type: string
+    x-example: 173d9deb-f3dd-48e6-93f3-905144bc4f4e
+  starttime:
+    name: starttime
+    in: query
+    description: >-
+      Only the data received after this date should be returned.(i.e. >=
+      starttime) in fleets time zone. Only date is supported.
+    required: true
+    type: string
+    format: date
+    x-example: '2019-02-15'
+  stoptime:
+    name: stoptime
+    in: query
+    description: >-
+      Only the data received before this date should be returned.(i.e. <
+      stoptime) in fleets time zone. Only date is supported.
+    required: true
+    type: string
+    format: date
+    x-example: '2019-02-21'
+  vin:
+    name: vin
+    in: query
+    description: Only the scores related to the vehicles with this VIN will be returned.
+    required: false
+    type: array
+    collectionFormat: csv
+    items:
+      type: string
+    x-example:
+      - ABC12345678901234
+  driverIdType:
+    name: driverIdType
+    in: query
+    description: >-
+      Defines the driverId and lastDriverId type. Required when any of these are
+      used. The only defined value is Tacho, all other are OEM specific, e.g.
+      pin, USB, encrypted EU Id. Volvo Group valid values: "Tacho", "pin",
+      "USB".
+    default: Tacho
+    required: false
+    type: string
+  driverId:
+    name: driverId
+    in: query
+    description: >-
+      Only the data related to the drivers with these driverIds should be
+      returned. The type of the driverIds is defined in driverIdType If
+      driverIdType is Tacho, the driverIds shall be CardIssuingMemberState +
+      DriverIdentification. CardIssuingMemberState shall be the nation alpha
+      code as specified by
+      https://dtc.jrc.ec.europa.eu/dtc_nation_codes.php.html
+      DriverIdentification shall always be 14 characters Examples
+      S12345678901234 (Card issued in Sweden for driver with id 12345678901234)
+      NLABCD1234567890 (Card issued in the Netherlands for driver with id
+      ABCD1234567890)
+    required: false
+    type: array
+    collectionFormat: csv
+    items:
+      type: string
+    x-example:
+      - S12345678901234
+  lastDriverId:
+    name: lastDriverId
+    in: query
+    description: >-
+      The response will return the next block of drivers, not including the one
+      with the given DriverId. When the last call to the Drivers list function
+      had MoreDataAvailable-parameter set to true, you must supply the DriverId
+      of the last item in the list as lastDriverId parameter in the next call.
+    required: false
+    type: string
+    x-example: S12345678901234
+  lastVin:
+    name: lastVin
+    in: query
+    description: >-
+      The response will return the next block of vehicles, not including the one
+      with the given VIN. When the last call to the vehicle list function had
+      MoreDataAvailable-parameter set to true, you must supply the VIN of the
+      last item in the list as lastVin parameter in the next call.
+    required: false
+    type: string
+    x-example: ABC12345678901234
+paths:
+  /scores:
+    get:
+      tags:
+        - 'Vehicle utilization Scores Fleet, Drivers and Vehicles'
+      summary: 'Vehicle utilization scores for Fleet, Drivers and Vehicles'
+      description: >-
+        Returns the fleet's, drivers and vehicles utilization scores of the
+        given time period. The starttime and stoptime are based on created time,
+        start and stop time are mandatory.
+      produces:
+        - application/x.volvogroup.com.scores.v2.0+json; UTF-8
+      parameters:
+        - $ref: '#/parameters/requestId'
+        - $ref: '#/parameters/starttime'
+        - $ref: '#/parameters/stoptime'
+        - $ref: '#/parameters/vin'
+        - $ref: '#/parameters/driverIdType'
+        - $ref: '#/parameters/driverId'
+        - name: contentFilter
+          in: query
+          description: >-
+            Will only return data reports that contain information in the area
+            defined by the filters. If this filter parameter isn't supplied the
+            returned reports contain all available blocks. If a driverId and/or
+            VIN number is supplied, and no contentFilter is used, then the
+            resultset will contain the Fleets score and the scores for the
+            selected Driver, and/or the scores for the selected vehicle.
+          required: false
+          type: array
+          collectionFormat: csv
+          items:
+            type: string
+            enum:
+              - FLEET
+              - DRIVERS
+              - VEHICLES
+        - $ref: '#/parameters/lastVin'
+        - $ref: '#/parameters/lastDriverId'
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/VuScoreResponseObject'
+        '400':
+          $ref: '#/responses/BadRequest'
+        '401':
+          $ref: '#/responses/Unauthorized'
+        '403':
+          $ref: '#/responses/Forbidden'
+        '404':
+          $ref: '#/responses/NotFound'
+        '406':
+          $ref: '#/responses/NotAcceptable'
+        '429':
+          $ref: '#/responses/TooManyRequests'
+definitions:
+  VuScoreResponseObject:
+    type: object
+    properties:
+      vuScoreResponse:
+        type: object
+        properties:
+          startTime:
+            type: string
+            format: date
+            example: '2019-02-15'
+            description: >-
+              Start date of the intervall to calculate scores, based on received
+              time in fleets time zone.
+          stopTime:
+            type: string
+            format: date
+            example: '2019-02-21'
+            description: >-
+              End date of the intervall to calculate scores, based on received
+              time in fleets time zone.
+          fleet:
+            $ref: '#/definitions/VuScoreObject'
+          drivers:
+            type: array
+            items:
+              $ref: '#/definitions/VuScoreDriverObject'
+          vehicles:
+            type: array
+            items:
+              $ref: '#/definitions/VuScoreVehicleObject'
+          moreDataAvailable:
+            type: boolean
+            description: >-
+              This will be set to true if the result set was too large to be
+              sent back in one reply. A new request must be done to get the rest
+              of the VU scores, the starttime and stoptime must be set to the
+              same as in previous call. The resultset will contain the Fleet
+              scores, and after that the drivers and vehicles. if the resultset
+              doesn't contain any vehicles and moreDataAvailable is true, then
+              there are more drivers to fetch, then the lastDriverId should be
+              set to the driver in the result of this message. If the resultset
+              doesn't contain any drivers, then all drivers have been returned
+              and only vehicles are left. If moreDataAvailable is set to true,
+              more vehicles are available otherwise all data have been
+              delivered. The lastVin should be set to the VIN of the last
+              vehicle in the result set of this message. The lastDriverId should
+              be set to the driver in the result of this message.
+          moreDataAvailableLink:
+            type: string
+            description: >-
+              Populated with the link to the next part of the result when
+              moreDataAvailable is true. The link is relative, i.e. starts with
+              /score/scores, and preserves any query parameters from the
+              original request.
+            example: >-
+              /score/scores?starttime=2023-09-04T16:42:49Z&stoptime=2023-09-08T16:42:49Z
+          requestServerDateTime:
+            type: string
+            format: date-time
+            description: >-
+              Time in UTC to be used to ask for historical data (for starttime),
+              to solve the problem of having different times at server and
+              clients. This is the time at the server when this request was
+              received. To avoid losing any messages or get duplicates, this is
+              the time that should be supplied in the starttime parameter in the
+              next request.
+        required:
+          - startTime
+          - stopTime
+          - moreDataAvailable
+          - requestServerDateTime
+    required:
+      - vuScoreResponse
+  VuScoreVehicleObject:
+    type: object
+    properties:
+      vin:
+        $ref: '#/definitions/VinProperty'
+      scores:
+        type: object
+        properties:
+          total:
+            type: number
+            format: double
+            description: >-
+              This score indicates how fuel/energy efficient the driver has
+              driven the vehicle. An efficient driving behaviour results in a
+              higher score. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          anticipation:
+            type: number
+            format: double
+            description: >-
+              This score indicates how well the driver has anticipated and
+              adapted the driving behaviour from a fuel/energy efficiency
+              perspective. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          braking:
+            type: number
+            format: double
+            description: >-
+              This score is calculated on the number of times brake pedal is
+              activated in relation to number of stops. Score Range is 0-100 for
+              Volvo & 0-10 for Renault.
+          coasting:
+            type: number
+            format: double
+            description: >-
+              This score is derived from coasting distance in relation to total
+              distance.  Score Range is 0-100 for Volvo & 0-10 for Renault.
+          engineAndGearUtilization:
+            type: number
+            format: double
+            description: >-
+              This score indicates how well the driver has utilised the
+              powertrain of the truck from a fuel/energy efficiency perspective.
+              Score Range is 0-100 for Volvo & 0-10 for Renault.
+          withinEconomy:
+            type: number
+            format: double
+            description: >-
+              This score indicates fuel consumption within economy rpm
+              range/green zone. Score Range is 0-100 for Volvo & 0-10 for
+              Renault.
+          aboveEconomy:
+            type: number
+            format: double
+            description: >-
+              This score indicates fuel consumption above economy rpm
+              range/green zone. This score will only be available for Volvo and
+              range is 0-100.
+          engineLoad:
+            type: number
+            format: double
+            description: >-
+              This score is derived from distance travelled with engine load at
+              over 90 % of its capacity. This score will only be available for
+              Volvo and range is 0-100.
+          gearboxInAutoMode:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time with gearbox in Automatic
+              mode.  Score Range is 0-100 for Volvo & 0-10 for Renault.
+          gearboxInManualMode:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time with gearbox in Manual mode.
+              This score will only be available for Volvo and range is 0-100.
+          gearboxInPowerMode:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time with gearbox in
+              Power/Performance mode. Score Range is 0-100 for Volvo & 0-10 for
+              Renault.
+          overrev:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time at engine overrev/red zone.
+              Score Range is 0-100 for Volvo & 0-10 for Renault.
+          topgear:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total distance on top gear in relation
+              to total distance travelled. This score will only be available for
+              Volvo and range is 0-100.
+          speedAdaption:
+            type: number
+            format: double
+            description: >-
+              This score is of how well the driver has stayed within fuel/energy
+              efficient speed and utilised cruise control. This score will only
+              be available for Volvo and range is 0-100.
+          abusiveUse:
+            type: number
+            format: double
+            description: >-
+              This score will indicate whether the driver has abused the Vehicle
+              or not. This score will only be available for Renault and it is -1
+              or 0.Here -1 indicates bad score and 0 indicates the good score.
+              There is no change in behavior, only description has been updated.
+          cruiseControl:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total distance with cruise control
+              activated. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          overspeed:
+            type: number
+            format: double
+            description: >-
+              This score is derived from fuel/energy consumption above the fleet
+              overspeed limit. Score Range is 0-100 for Volvo & for Renault it
+              is -1 or 0. Here -1 indicates bad score and 0 indicates the good
+              score.
+          standstill:
+            type: number
+            format: double
+            description: >-
+              This score indicates of how well the driver has minimised the time
+              spent idling. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          idling:
+            type: number
+            format: double
+            description: >-
+              This score is derived from the time spent idling. Score Range is
+              0-100 for Volvo & 0-10 for Renault.
+          edriveMode:
+            type: number
+            format: double
+            description: >-
+              This score is based on distance using performance drive mode
+              compared to distance using any drive mode. This score will only be
+              available for Volvo and range is 0-100.
+          standstillElectric:
+            type: number
+            format: double
+            description: >-
+              This score is based on consumption while standing still excluding
+              PTO consumption. Score Range is 0-100 for Volvo & 0-10 for
+              Renault.
+        required:
+          - total
+          - anticipation
+          - braking
+          - coasting
+          - engineAndGearUtilization
+          - standstill
+      totalTime:
+        type: integer
+        description: Total time the engine has been running in seconds.
+      avgSpeedDriving:
+        type: number
+        format: double
+        example: 54.5
+        description: >-
+          The average driving speed in km/h.This parameter replaces
+          avgSpeedDrivingKmh from previous version 1.0.X.
+      totalDistance:
+        type: number
+        format: double
+        description: >-
+          Total distance for the fleet, driver(s) or vehicle(s) in meters.This
+          parameter replaces totalDistanceInKm from previous version 1.0.X.
+        example: 1545
+      avgFuelConsumption:
+        type: number
+        format: double
+        description: >-
+          Diesel consumption in millilitres per 100Km.This parameter replaces
+          avgFuelConsumptionPer100Km from previous version 1.0.X.
+      avgFuelConsumptionGaseous:
+        type: number
+        format: double
+        description: >-
+          Gas (LNG) consumption in kilograms per 100Km.This parameter replaces
+          avgFuelConsumptionKgPer100Km from previous version 1.0.X.
+      avgElectricEnergyConsumption:
+        type: number
+        format: double
+        description: Average energy consumption in watt-hours per 100Km.
+      vehicleUtilization:
+        type: number
+        format: double
+        description: vehicleUsage in percentage.
+      co2Emissions:
+        type: number
+        format: double
+        description: >-
+          co2EmissionFootPrint in tons only available for Volvo.This parameters
+          replaces co2EmissionInTons from version 1.0.X.
+        example: 2.74
+      co2Saved:
+        type: number
+        format: double
+        description: >-
+          Approximation of how much carbon dioxide would have been emitted by
+          using a EURO6 diesel truck fueled with B7 diesel instead of an
+          electric truck.
+        example: 0.07
+    required:
+      - vin
+      - scores
+      - totalTime
+      - avgSpeedDriving
+      - vehicleUtilization
+      - totalDistance
+  VuScoreDriverObject:
+    type: object
+    properties:
+      driverId:
+        $ref: '#/definitions/DriverIdObject'
+      scores:
+        type: object
+        properties:
+          total:
+            type: number
+            format: double
+            description: >-
+              This score indicates how fuel/energy efficient the driver has
+              driven the vehicle. An efficient driving behaviour results in a
+              higher score. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          anticipation:
+            type: number
+            format: double
+            description: >-
+              This score indicates how well the driver has anticipated and
+              adapted the driving behaviour from a fuel/energy efficiency
+              perspective. Score Range is 0-100 for Volvo & 0-10 for Renault..
+          braking:
+            type: number
+            format: double
+            description: >-
+              This score is calculated on the number of times brake pedal is
+              activated in relation to number of stops. Score Range is 0-100 for
+              Volvo & 0-10 for Renault.
+          coasting:
+            type: number
+            format: double
+            description: >-
+              This score is derived from coasting distance in relation to total
+              distance.  Score Range is 0-100 for Volvo & 0-10 for Renault.
+          engineAndGearUtilization:
+            type: number
+            format: double
+            description: >-
+              This score indicates how well the driver has utilised the
+              powertrain of the truck from a fuel/energy efficiency perspective.
+              Score Range is 0-100 for Volvo & 0-10 for Renault.
+          withinEconomy:
+            type: number
+            format: double
+            description: >-
+              This score indicates fuel consumption within economy rpm
+              range/green zone. Score Range is 0-100 for Volvo & 0-10 for
+              Renault.
+          aboveEconomy:
+            type: number
+            format: double
+            description: >-
+              This score indicates fuel consumption above economy rpm
+              range/green zone. This score will only be available for Volvo and
+              range is 0-100.
+          engineLoad:
+            type: number
+            format: double
+            description: >-
+              This score is derived from distance travelled with engine load at
+              over 90 % of its capacity. This score will only be available for
+              Volvo and range is 0-100.
+          gearboxInAutoMode:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time with gearbox in Automatic
+              mode.  Score Range is 0-100 for Volvo & 0-10 for Renault.
+          gearboxInManualMode:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time with gearbox in Manual mode.
+              This score will only be available for Volvo and range is 0-100.
+          gearboxInPowerMode:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time with gearbox in
+              Power/Performance mode. Score Range is 0-100 for Volvo & 0-10 for
+              Renault.
+          overrev:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time at engine overrev/red zone.
+              Score Range is 0-100 for Volvo & 0-10 for Renault.
+          topgear:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total distance on top gear in relation
+              to total distance travelled. This score will only be available for
+              Volvo and range is 0-100.
+          speedAdaption:
+            type: number
+            format: double
+            description: >-
+              This score is of how well the driver has stayed within fuel/energy
+              efficient speed and utilised cruise control. This score will only
+              be available for Volvo and range is 0-100.
+          abusiveUse:
+            type: number
+            format: double
+            description: >-
+              This score will indicate whether the driver has abused the Vehicle
+              or not. This score will only be available for Renault and it is -1
+              or 0. Here -1 indicates bad score and 0 indicates the good score.
+              There is no change in behavior, only description has been updated.
+          cruiseControl:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total distance with cruise control
+              activated. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          overspeed:
+            type: number
+            format: double
+            description: >-
+              This score is derived from fuel/energy consumption above the fleet
+              overspeed limit. Score Range is 0-100 for Volvo & for Renault it
+              is -1 or 0. Here -1 indicates bad score and 0 indicates the good
+              score.
+          standstill:
+            type: number
+            format: double
+            description: >-
+              This score indicates of how well the driver has minimised the time
+              spent idling. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          idling:
+            type: number
+            format: double
+            description: >-
+              This score is derived from the time spent idling. Score Range is
+              0-100 for Volvo & 0-10 for Renault.
+          edriveMode:
+            type: number
+            format: double
+            description: >-
+              This score is based on distance using performance drive mode
+              compared to distance using any drive mode. This score will only be
+              available for Volvo and range is 0-100.
+          standstillElectric:
+            type: number
+            format: double
+            description: >-
+              This score is based on consumption while standing still excluding
+              PTO consumption. Score Range is 0-100 for Volvo & 0-10 for
+              Renault.
+        required:
+          - total
+          - anticipation
+          - braking
+          - coasting
+          - engineAndGearUtilization
+          - standstill
+      totalTime:
+        type: integer
+        description: Total time the engine has been running in seconds.
+      avgSpeedDriving:
+        type: number
+        format: double
+        example: 54.5
+        description: >-
+          The average driving speed in km/h.This parameter replaces
+          avgSpeedDrivingKmh from previous version 1.0.X.
+      totalDistance:
+        type: number
+        format: double
+        description: >-
+          Total distance for the fleet, driver(s) or vehicle(s) in meters.This
+          parameter replaces totalDistanceInKm from previous version 1.0.X.
+        example: 1545
+      avgFuelConsumption:
+        type: number
+        format: double
+        description: >-
+          Diesel consumption in millilitres per 100Km.This parameter replaces
+          avgFuelConsumptionPer100Km from previous version 1.0.X.
+      avgFuelConsumptionGaseous:
+        type: number
+        format: double
+        description: >-
+          Gas (LNG) consumption in kilograms per 100Km.This parameter replaces
+          avgFuelConsumptionKgPer100Km from previous version 1.0.X.
+      avgElectricEnergyConsumption:
+        type: number
+        format: double
+        description: Average energy consumption in watt-hours per 100Km.
+      vehicleUtilization:
+        type: number
+        format: double
+        description: vehicleUsage in percentage.
+      co2Emissions:
+        type: number
+        format: double
+        description: >-
+          co2EmissionFootPrint in tons only available for Volvo.This parameters
+          replaces co2EmissionInTons from version 1.0.X.
+        example: 2.74
+      co2Saved:
+        type: number
+        format: double
+        description: >-
+          Approximation of how much carbon dioxide would have been emitted by
+          using a EURO6 diesel truck fueled with B7 diesel instead of an
+          electric truck.
+        example: 0.07
+    required:
+      - driverId
+      - scores
+      - totalTime
+      - avgSpeedDriving
+      - vehicleUtilization
+      - totalDistance
+  VuScoreObject:
+    type: object
+    properties:
+      scores:
+        type: object
+        properties:
+          total:
+            type: number
+            format: double
+            description: >-
+              This score indicates how fuel/energy efficient the driver has
+              driven the vehicle. An efficient driving behaviour results in a
+              higher score. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          anticipation:
+            type: number
+            format: double
+            description: >-
+              This score indicates how well the driver has anticipated and
+              adapted the driving behaviour from a fuel/energy efficiency
+              perspective. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          braking:
+            type: number
+            format: double
+            description: >-
+              This score is calculated on the number of times brake pedal is
+              activated in relation to number of stops. Score Range is 0-100 for
+              Volvo & 0-10 for Renault.
+          coasting:
+            type: number
+            format: double
+            description: >-
+              This score is derived from coasting distance in relation to total
+              distance.  Score Range is 0-100 for Volvo & 0-10 for Renault.
+          engineAndGearUtilization:
+            type: number
+            format: double
+            description: >-
+              This score indicates how well the driver has utilised the
+              powertrain of the truck from a fuel/energy efficiency perspective.
+              Score Range is 0-100 for Volvo & 0-10 for Renault.
+          withinEconomy:
+            type: number
+            format: double
+            description: >-
+              This score indicates fuel consumption within economy rpm
+              range/green zone. Score Range is 0-100 for Volvo & 0-10 for
+              Renault.
+          aboveEconomy:
+            type: number
+            format: double
+            description: >-
+              This score indicates fuel consumption above economy rpm
+              range/green zone. This score will only be available for Volvo and
+              range is 0-100.
+          engineLoad:
+            type: number
+            format: double
+            description: >-
+              This score is derived from distance travelled with engine load at
+              over 90 % of its capacity. This score will only be available for
+              Volvo and range is 0-100.
+          gearboxInAutoMode:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time with gearbox in Automatic
+              mode.  Score Range is 0-100 for Volvo & 0-10 for Renault.
+          gearboxInManualMode:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time with gearbox in Manual mode.
+              This score will only be available for Volvo and range is 0-100.
+          gearboxInPowerMode:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time with gearbox in
+              Power/Performance mode. Score Range is 0-100 for Volvo & 0-10 for
+              Renault.
+          overrev:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total time at engine overrev/red zone.
+              Score Range is 0-100 for Volvo & 0-10 for Renault.
+          topgear:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total distance on top gear in relation
+              to total distance travelled. This score will only be available for
+              Volvo and range is 0-100.
+          speedAdaption:
+            type: number
+            format: double
+            description: >-
+              This score is of how well the driver has stayed within fuel/energy
+              efficient speed and utilised cruise control. This score will only
+              be available for Volvo and range is 0-100.
+          abusiveUse:
+            type: number
+            format: double
+            description: >-
+              This score will indicate whether the driver has abused the Vehicle
+              or not. This score will only be available for Renault and it is -1
+              or 0. Here -1 indicates bad score and 0 indicates the good score.
+              There is no change in behavior, only description has been updated.
+          cruiseControl:
+            type: number
+            format: double
+            description: >-
+              This score is derived from total distance with cruise control
+              activated. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          overspeed:
+            type: number
+            format: double
+            description: >-
+              This score is derived from fuel/energy consumption above the fleet
+              overspeed limit. Score Range for Renault is between -1 and 0 &
+              0-100 for Volvo.
+          standstill:
+            type: number
+            format: double
+            description: >-
+              This score indicates of how well the driver has minimised the time
+              spent idling. Score Range is 0-100 for Volvo & 0-10 for Renault.
+          idling:
+            type: number
+            format: double
+            description: >-
+              This score is derived from the time spent idling. Score Range is
+              0-100 for Volvo & 0-10 for Renault.
+          edriveMode:
+            type: number
+            format: double
+            description: >-
+              This score is based on distance using performance drive mode
+              compared to distance using any drive mode. This score will only be
+              available for Volvo and range is 0-100.
+          standstillElectric:
+            type: number
+            format: double
+            description: >-
+              This score is based on consumption while standing still excluding
+              PTO consumption. Score Range is 0-100 for Volvo & 0-10 for
+              Renault.
+        required:
+          - total
+          - anticipation
+          - braking
+          - coasting
+          - engineAndGearUtilization
+          - standstill
+      totalTime:
+        type: integer
+        description: Total time the engine has been running in seconds.
+      avgSpeedDriving:
+        type: number
+        format: double
+        example: 54.5
+        description: >-
+          The average driving speed in km/h.This parameter replaces
+          avgSpeedDrivingKmh from previous version 1.0.X.
+      totalDistance:
+        type: number
+        format: double
+        description: >-
+          Total distance for the fleet, driver(s) or vehicle(s) in meters.This
+          parameter replaces totalDistanceInKm from previous version 1.0.X.
+        example: 1545
+      avgFuelConsumption:
+        type: number
+        format: double
+        description: >-
+          Diesel consumption in millilitres per 100Km.This parameter replaces
+          avgFuelConsumptionPer100Km from previous version 1.0.X.
+      avgFuelConsumptionGaseous:
+        type: number
+        format: double
+        description: >-
+          Gas (LNG) consumption in kilograms per 100Km.This parameter replaces
+          avgFuelConsumptionKgPer100Km from previous version 1.0.X.
+      avgElectricEnergyConsumption:
+        type: number
+        format: double
+        description: Average energy consumption in watt-hours per 100Km.
+      vehicleUtilization:
+        type: number
+        format: double
+        description: vehicleUsage in percentage.
+      co2Emissions:
+        type: number
+        format: double
+        description: >-
+          co2EmissionFootPrint in tons only available for Volvo.This parameters
+          replaces co2EmissionInTons from version 1.0.X.
+        example: 2.74
+      co2Saved:
+        type: number
+        format: double
+        description: >-
+          Approximation of how much carbon dioxide would have been emitted by
+          using a EURO6 diesel truck fueled with B7 diesel instead of an
+          electric truck.
+        example: 0.07
+    required:
+      - scores
+      - totalTime
+      - avgSpeedDriving
+      - vehicleUtilization
+      - totalDistance
+  DriverIdObject:
+    type: object
+    properties:
+      tachoDriverIdentification:
+        type: object
+        properties:
+          driverIdentification:
+            type: string
+            description: >-
+              The unique identification of a driver in a Member State. This
+              fields is formatted according the definition for
+              driverIdentification in: COMMISSION REGULATION (EC) No 1360/2002
+              Annex 1b
+            example: 12345678901234
+          cardIssuingMemberState:
+            type: string
+            description: >-
+              The country alpha code of the Member State having issued the card.
+              This fields is formatted according the definition for NationAlpha
+              in: COMMISSION REGULATION (EC) No 1360/2002 Annex 1b
+            example: S
+          driverAuthenticationEquipment:
+            type: string
+            description: >-
+              Code to distinguish different types of equipment for the
+              tachograph application. See description of the field
+              'DriverAuthenticationEquipment' in: COMMISSION REGULATION (EC) No
+              1360/2002 Annex 1b
+            example: DRIVER_CARD
+            enum:
+              - RESERVED
+              - DRIVER_CARD
+              - CONTROL_CARD
+              - COMPANY_CARD
+              - MANUFACTURING_CARD
+              - VEHICLE_UNIT
+              - MOTION_SENSOR
+          cardReplacementIndex:
+            type: string
+            description: >-
+              A card replacement index. This fields is formatted according the
+              definition for CardReplacementIndex (chap 2.26) in: COMMISSION
+              REGULATION (EC) No 1360/2002 Annex 1b
+            example: 0
+          cardRenewalIndex:
+            type: string
+            description: >-
+              A card renewal index. This fields is formatted according the
+              definition for CardRenewalIndex (chap 2.25) in: COMMISSION
+              REGULATION (EC) No 1360/2002 Annex 1b
+            example: 0
+        required:
+          - driverIdentification
+          - cardIssuingMemberState
+      oemDriverIdentification:
+        type: object
+        properties:
+          idType:
+            type: string
+            description: 'Contains an optional id type (e.g. pin, USB, encrypted EU id).'
+            example: USB
+          oemDriverIdentification:
+            type: string
+            description: An OEM specific driver id.
+            example: ABC-123-DEF
+  VinProperty:
+    type: string
+    description: vehicle identification number. See ISO 3779 (17 characters).
+    example: ABC12345678901234
+responses:
+  BadRequest:
+    description: >-
+      The server cannot or will not process the request due to an apparent
+      client error (e.g., malformed request syntax, invalid request message
+      framing, or deceptive request routing). Possible reason mandatory field
+      missing, e.g. Authentication Header empty or missing.
+  Unauthorized:
+    description: >-
+      Similar to 403 Forbidden, but specifically for use when authentication is
+      required and has failed or has not yet been provided. The response must
+      include a WWW-Authenticate header field containing a challenge applicable
+      to the requested resource. See Basic access authentication and Digest
+      access authentication. Possible reason Wrong credentials and/or Login
+      credentials expired.
+  Forbidden:
+    description: >-
+      The request was a valid request, but the server is refusing to respond to
+      it. Unlike a 401 Unauthorized response, authenticating will make no
+      difference. On servers where authentication is required, this commonly
+      means that the provided credentials were successfully authenticated but
+      that the credentials still do not grant the client permission to access
+      the resource (e.g. a recognized user attempting to access restricted
+      content). Possible reason Insufficient rights for the service, no rights
+      on any service of this vehicle and/or Response is too large.
+  NotFound:
+    description: >-
+      The requested resource could not be found but may be available again in
+      the future. Subsequent requests by the client are permissible. Possible
+      reason vehicle unknown and/or rFMS-Version not supported.
+  NotAcceptable:
+    description: Possible reason unsupported Accept parameter sent.
+  TooManyRequests:
+    description: >-
+      The user has sent too many requests in a given amount of time. Intended
+      for use with rate limiting schemes. Possible reason Request sent too often
+      and/or Max concurrent calls.

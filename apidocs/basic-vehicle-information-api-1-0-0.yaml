@@ -1,0 +1,562 @@
+openapi: 3.0.3
+info:
+  title: Basic Vehicle Information
+  version: 1.0.0
+  description: >-
+    Standardized API that enables authorized access to selected
+    vehicle-generated data
+servers:
+  - url: 'https://api.volvotrucks.com/vdds'
+tags:
+  - name: Products
+    description: Product (vehicle) information
+  - name: Reading
+    description: Detailed reading information
+  - name: Parameters metadata
+    description: Parameters metadata
+  - name: Parameters
+    description: Vehicle sensor(s) data values
+paths:
+  /parameters:
+    get:
+      tags:
+        - Parameters metadata
+      summary: Get available parameters with metadata in the requested list
+      description: >-
+        Returns list of available parameters with metadata that were requested
+        in the URL
+      parameters:
+        - name: requestId
+          in: query
+          description: >-
+            A client unique request id used for fault tracing at the API
+            supplier. This shall be unique for each request.
+          required: false
+          schema:
+            type: string
+            example: 173d9deb-f3dd-48e6-93f3-905144bc4f4e
+        - name: ParametersIds
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/MParametersIds'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/x.volvogroup.com.parameters.v1.0+json:
+              schema:
+                $ref: '#/components/schemas/ParametersMetadata'
+        '400':
+          description: Bad Request
+          content: {}
+        '401':
+          description: Not Authenticated
+          content: {}
+        '403':
+          description: Not Authorized
+          content: {}
+        '404':
+          description: No results found
+          content: {}
+        '500':
+          description: Server error
+          content: {}
+  /products:
+    get:
+      tags:
+        - Products
+      summary: Get a list of products matching filter criteria; INITIALIZATION
+      description: >-
+        Returns a object based on VIN requested associated with a status status
+        will be on-going or available when available you can get readings from
+        the getreading operation
+      parameters:
+        - name: requestId
+          in: query
+          description: >-
+            A client unique request id used for fault tracing at the API
+            supplier. This shall be unique for each request.
+          required: false
+          schema:
+            type: string
+            example: 173d9deb-f3dd-48e6-93f3-905144bc4f4e
+        - name: vin
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/VINS'
+        - name: lastVin
+          in: query
+          description: >-
+            The response will return the next block of vehicles not including
+            the one with the given VIN. When the last call to the vehicle list
+            function had MoreDataAvailable-parameter set to true you must supply
+            the VIN of the last item in the list as lastVin parameter in the
+            next call.
+          required: false
+          schema:
+            type: string
+            x-example: ABC12345678901234
+      responses:
+        '200':
+          description: OK
+          content:
+            application/x.volvogroup.com.products.v1.0+json:
+              schema:
+                $ref: '#/components/schemas/ProductsResponse'
+        '400':
+          description: Bad Request
+          content: {}
+        '401':
+          description: Not Authenticated
+          content: {}
+        '403':
+          description: Not Authorized
+          content: {}
+        '404':
+          description: No results found
+          content: {}
+        '500':
+          description: Server error
+          content: {}
+  /products/getreadings:
+    get:
+      tags:
+        - Reading
+      summary: >-
+        Get all readings or only latest for a given vehicle (or collection of
+        vehicles)
+      description: >-
+        Returns the list a reading available for the given VINs with a max 2
+        weeks period of time from date and to date are ISO8601, and
+        FilterReadings can contain a collection of reading objects
+      parameters:
+        - name: requestId
+          in: query
+          description: >-
+            A client unique request id used for fault tracing at the API
+            supplier. This shall be unique for each request.
+          required: false
+          schema:
+            type: string
+            example: 173d9deb-f3dd-48e6-93f3-905144bc4f4e
+        - name: FilterReadings
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/FilterReadings'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/x.volvogroup.com.readings.v1.0+json:
+              schema:
+                $ref: '#/components/schemas/Readings'
+        '400':
+          description: Bad Request
+          content: {}
+        '401':
+          description: Not Authenticated
+          content: {}
+        '403':
+          description: Not Authorized
+          content: {}
+        '404':
+          description: No results found
+          content: {}
+        '500':
+          description: Server error
+          content: {}
+  '/products/{ReadingId}/getparametersinglevalues':
+    get:
+      tags:
+        - Parameters
+      summary: Get a single value parameter value for a given vehicle id / readingID
+      description: >-
+        Returns a list of the single value parameter values for a given chassis
+        id and parameter name and/or reading id
+      parameters:
+        - name: requestId
+          in: query
+          description: >-
+            A client unique request id used for fault tracing at the API
+            supplier. This shall be unique for each request.
+          required: false
+          schema:
+            type: string
+            example: 173d9deb-f3dd-48e6-93f3-905144bc4f4e
+        - name: ReadingId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ReadingId'
+        - name: VIN
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/VIN'
+        - name: ParametersIds
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ParametersIds'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/x.volvogroup.com.parametersinglevalue.v1.0+json:
+              schema:
+                $ref: '#/components/schemas/ParametersSingleValueResponse'
+        '400':
+          description: Bad Request
+          content: {}
+        '401':
+          description: Not Authenticated
+          content: {}
+        '403':
+          description: Not Authorized
+          content: {}
+        '404':
+          description: No results found
+          content: {}
+        '500':
+          description: Server error
+          content: {}
+  '/products/{ReadingId}/getparameterarrayvalues':
+    get:
+      tags:
+        - Parameters
+      summary: >-
+        Get a one dimension array parameter value for a given vehicle id and
+        readingId
+      description: >-
+        Returns a list of the one dimension array parameter values for a given
+        vehicle id and parameter name
+      parameters:
+        - name: requestId
+          in: query
+          description: >-
+            A client unique request id used for fault tracing at the API
+            supplier. This shall be unique for each request.
+          required: false
+          schema:
+            type: string
+            example: 173d9deb-f3dd-48e6-93f3-905144bc4f4e
+        - name: ReadingId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ReadingId'
+        - name: VIN
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/VIN'
+        - name: ParametersIds
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ParametersIds'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/x.volvogroup.com.parameterarrayvalue.v1.0+json:
+              schema:
+                $ref: '#/components/schemas/ParametersArrayValueResponse'
+        '400':
+          description: Bad Request
+          content: {}
+        '401':
+          description: Not Authenticated
+          content: {}
+        '403':
+          description: Not Authorized
+          content: {}
+        '404':
+          description: No results found
+          content: {}
+        '500':
+          description: Server error
+          content: {}
+  '/products/{ReadingId}/getparameterstructvalues':
+    get:
+      tags:
+        - Parameters
+      summary: Get a structure parameter value for a given vehicle id and readingId
+      description: >-
+        Returns a list of the structure parameter values for a given vehicle id
+        and parameter name
+      parameters:
+        - name: requestId
+          in: query
+          description: >-
+            A client unique request id used for fault tracing at the API
+            supplier. This shall be unique for each request.
+          required: false
+          schema:
+            type: string
+            example: 173d9deb-f3dd-48e6-93f3-905144bc4f4e
+        - name: ReadingId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ReadingId'
+        - name: VIN
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/VIN'
+        - name: ParametersIds
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ParametersIds'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/x.volvogroup.com.parameterstructvalue.v1.0+json:
+              schema:
+                $ref: '#/components/schemas/ParametersStructValueResponse'
+        '400':
+          description: Bad Request
+          content: {}
+        '401':
+          description: Not Authenticated
+          content: {}
+        '403':
+          description: Not Authorized
+          content: {}
+        '404':
+          description: No results found
+          content: {}
+        '500':
+          description: Server error
+          content: {}
+security:
+  - basicAuth: []
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+  schemas:
+    ProductsResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          description: List of available products matching filter criteria
+          maxItems: 10000
+          items:
+            $ref: '#/components/schemas/Product'
+        moreDataAvailable:
+          type: boolean
+          description: >-
+            This will be set to true if the result set was too large to be sent
+            back in one reply. A new request must be done to get the rest of the
+            available vehicles, where the lastVin parameter must be supplied.
+            The lastVin should be set to the last received vehicle in the result
+            set of this message.
+    VINS:
+      type: array
+      minItems: 1
+      maxItems: 100
+      items:
+        $ref: '#/components/schemas/VIN'
+    Product:
+      title: Product
+      type: object
+      properties:
+        vin:
+          $ref: '#/components/schemas/VIN'
+        status:
+          type: string
+          description: 'Possible statuses: ongoing, available, notavailable'
+    VIN:
+      type: string
+      minLength: 17
+      maxLength: 17
+      description: Vehicle identification number
+      example: ABCDEF12GHI345678
+    FilterReading:
+      type: object
+      properties:
+        VIN:
+          $ref: '#/components/schemas/VIN'
+        fromDate:
+          type: string
+          format: date-time
+          description: From which Readout date
+        toDate:
+          type: string
+          format: date-time
+          description: To which Readout date
+      required:
+        - VIN
+        - fromDate
+        - toDate
+    FilterReadings:
+      type: array
+      minItems: 1
+      maxItems: 30
+      items:
+        $ref: '#/components/schemas/FilterReading'
+    Readings:
+      type: array
+      description: List of readings
+      maxItems: 10000
+      items:
+        $ref: '#/components/schemas/Reading'
+    Reading:
+      type: object
+      properties:
+        vin:
+          $ref: '#/components/schemas/VIN'
+        readingId:
+          $ref: '#/components/schemas/ReadingId'
+        readoutDate:
+          $ref: '#/components/schemas/ReadoutDate'
+        parameters:
+          type: array
+          maxItems: 10000
+          items:
+            $ref: '#/components/schemas/ParameterId'
+    ReadingId:
+      type: integer
+      format: int64
+      description: Unique parameter reading identifier (bigint)
+      example: 9223372036854776000
+    ReadoutDate:
+      type: string
+      format: date-time
+      description: Readout date
+      example: '1970-01-01T00:00:00.000Z'
+    ParametersMetadata:
+      type: array
+      description: List of parameters
+      maxItems: 10000
+      items:
+        $ref: '#/components/schemas/ParameterMetadata'
+    ParameterMetadata:
+      type: object
+      properties:
+        parameterId:
+          $ref: '#/components/schemas/ParameterId'
+        unit:
+          type: string
+        caption:
+          type: string
+        description:
+          type: string
+        physicalDimension:
+          type: string
+        minPhysicalValue:
+          type: number
+        maxPhysicalValue:
+          type: number
+        captionsStruct:
+          type: string
+        identifier_1:
+          type: string
+        identifier_2:
+          type: string
+        axisParemter_1:
+          $ref: '#/components/schemas/ParameterId'
+        axisParemter_2:
+          $ref: '#/components/schemas/ParameterId'
+        method:
+          type: string
+    MParametersIds:
+      type: array
+      minItems: 1
+      maxItems: 100
+      items:
+        $ref: '#/components/schemas/ParameterId'
+    ParametersIds:
+      type: array
+      minItems: 1
+      maxItems: 10
+      items:
+        $ref: '#/components/schemas/ParameterId'
+    ParameterId:
+      type: string
+      description: Unique parameter identifier
+      minLength: 2
+      example: '17569'
+    ParameterSingleValue:
+      type: object
+      properties:
+        value:
+          type: string
+        valueType:
+          type: string
+      description: 'Value of a parameter; ValueType can be numeric, bit, enum, string'
+    ParameterArrayValue:
+      type: object
+      properties:
+        value:
+          type: string
+        valueType:
+          type: string
+        index_1:
+          type: integer
+          format: int64
+        identifier_1:
+          type: string
+    ParameterStructValue:
+      type: object
+      properties:
+        value:
+          type: string
+        valueType:
+          type: string
+        index_1:
+          type: integer
+          format: int64
+        index_2:
+          type: integer
+          format: int64
+        identifier_1:
+          type: string
+        identifier_2:
+          type: string
+    ParameterSingleValueResponse:
+      type: object
+      properties:
+        parameterId:
+          $ref: '#/components/schemas/ParameterId'
+        value:
+          $ref: '#/components/schemas/ParameterSingleValue'
+    ParametersSingleValueResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/ParameterSingleValueResponse'
+    ParameterArrayValueResponse:
+      type: object
+      properties:
+        parameterId:
+          $ref: '#/components/schemas/ParameterId'
+        value:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParameterArrayValue'
+    ParametersArrayValueResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/ParameterArrayValueResponse'
+    ParameterStructValueResponse:
+      type: object
+      properties:
+        parameterId:
+          $ref: '#/components/schemas/ParameterId'
+        value:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParameterStructValue'
+    ParametersStructValueResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/ParameterStructValueResponse'

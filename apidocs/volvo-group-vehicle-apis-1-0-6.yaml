@@ -1,0 +1,2389 @@
+swagger: '2.0'
+info:
+  description: Volvo Group vehicle API
+  version: 1.0.6
+  title: Volvo Group vehicle APIs
+host: api.volvotrucks.com
+basePath: /vehicle
+securityDefinitions:
+  basicAuth:
+    type: basic
+security:
+  - basicAuth: []
+schemes:
+  - https
+parameters:
+  requestId:
+    name: requestId
+    in: query
+    description: >-
+      A client unique request id used for fault tracing at the API supplier.
+      This shall be unique for each request if used.
+    required: false
+    type: string
+    x-example: 173d9deb-f3dd-48e6-93f3-905144bc4f4e
+  lastVin:
+    name: lastVin
+    in: query
+    description: >-
+      The response will return the next block of vehicles not including the one
+      with the given VIN. When the last call to the vehicle list function had
+      MoreDataAvailable-parameter set to true you must supply the VIN of the
+      last item in the list as lastVin parameter in the next call.
+    required: false
+    type: string
+    x-example: ABC12345678901234
+  datetype:
+    name: datetype
+    in: query
+    description: >-
+      The start/stop times are compared to the created or received time of the
+      position reports. If this isn’t supplied all times are received times.
+    default: received
+    required: false
+    type: string
+    enum:
+      - created
+      - received
+  starttime:
+    name: starttime
+    in: query
+    description: >-
+      Only the data created/received after this time should be returned. (i.e.
+      >= starttime)
+    required: false
+    type: string
+    format: date-time
+    x-example: '2023-03-16T10:00:00Z'
+  stoptime:
+    name: stoptime
+    in: query
+    description: >-
+      Only the data created/received before this time should be returned. (i.e.
+      < stoptime)
+    required: false
+    type: string
+    format: date-time
+    x-example: '2023-03-16T10:15:00Z'
+  vin:
+    name: vin
+    in: query
+    description: Only the data created by the vehicle with this VIN should be returned
+    required: false
+    type: string
+paths:
+  /vehicles:
+    get:
+      tags:
+        - Vehicle Data
+      summary: List of vehicles
+      description: >-
+        The vehicle resource is used to get a list of all the vehicles the
+        client credentials  has access to. The vehicle list is always returned
+        in the same order.
+      produces:
+        - application/x.volvogroup.com.vehicles.v1.0+json; UTF-8
+      parameters:
+        - $ref: '#/parameters/requestId'
+        - name: additionalContent
+          in: query
+          description: >-
+            Returns additional data reports as specified in this parameter, in a
+            comma separated list. If this parameter isn’t supplied the returned
+            reports contain no additional content. VOLVOGROUPVEHICLE - Addtional
+            Volvo Group content
+          required: false
+          type: array
+          collectionFormat: csv
+          items:
+            type: string
+            enum:
+              - VOLVOGROUPVEHICLE
+        - $ref: '#/parameters/lastVin'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/VehicleResponseObject'
+        '400':
+          $ref: '#/responses/BadRequest'
+        '401':
+          $ref: '#/responses/Unauthorized'
+        '403':
+          $ref: '#/responses/Forbidden'
+        '404':
+          $ref: '#/responses/NotFound'
+        '406':
+          $ref: '#/responses/NotAcceptable'
+        '429':
+          $ref: '#/responses/TooManyRequests'
+  /vehiclepositions:
+    get:
+      tags:
+        - Vehicle Data
+      summary: Positions for one or more vehicles
+      description: >-
+        The vehicle position resource is used to get the positions for one or
+        several vehicles. The starttime, stoptime & latestOnly parameters can be
+        used to get all historical positions between a start and stop time or
+        the latest known position only. The vin parameter can be used to get all
+        historical positions between starttime and stoptime or latest position
+        for one individual vehicle. If the vin parameter isn’t set the response
+        will contain all vehicles the client has access to. If a request is made
+        for data in a period where no data has been received, an empty list will
+        be returned.
+      produces:
+        - application/x.volvogroup.com.vehiclepositions.v1.0+json; UTF-8
+      parameters:
+        - $ref: '#/parameters/requestId'
+        - $ref: '#/parameters/datetype'
+        - $ref: '#/parameters/starttime'
+        - $ref: '#/parameters/stoptime'
+        - $ref: '#/parameters/vin'
+        - name: latestOnly
+          in: query
+          description: >-
+            If this value is set to true only the last latest position, matching
+            the trigger filter (if used), is returned for each vehicle in the
+            response. If this value is set to false (or not present) all
+            positions matching the starttime/stoptime criteria is returned for
+            each vehicle in the response.
+          required: false
+          type: boolean
+          default: false
+        - name: triggerFilter
+          in: query
+          description: >-
+            Will only return data reports that was triggered by the trigger
+            defined by the filter. Detailed information for this parameter can
+            be found in the Trigger filter chapter in the API documentation.
+          required: false
+          type: string
+          enum:
+            - TIMER
+            - TELL_TALE
+            - DRIVER_LOGIN
+            - DRIVER_LOGOUT
+            - IGNITION_ON
+            - IGNITION_OFF
+            - ENGINE_ON
+            - ENGINE_OFF
+            - PTO_ENABLED
+            - PTO_DISABLED
+            - DISTANCE_TRAVELLED
+            - DRIVER_1_WORKING_STATE_CHANGED
+            - DRIVER_2_WORKING_STATE_CHANGED
+            - GEOFENCE
+            - DTJ_ACTIVITY
+            - CARGO_DOOR
+            - CARGO_DEFROST
+            - DRIVING_WITHOUT_BEING_LOGGEDIN
+            - FUELLEVEL_CHANGED_WHILE_OFF
+            - ADBLUELEVEL_CHANGED_WHILE_OFF
+            - DTM
+            - STATUS_ON_DEMAND
+            - COLLISION_MITIGATION
+            - FLEET_OVERSPEED
+            - TACHO_OUT_OF_SCOPE_MODE
+            - IDLING
+            - TIRE_WARNING
+            - MOVEMENT
+            - NO_MOVEMENT
+            - TEMPERATURE_ALARM
+            - ADBLUELEVEL_LOW
+            - WITHOUT_ADBLUE
+            - BATTERY_PACK_HIGH_DISCHARGE
+            - BATTERY_PACK_ENERGY_USAGE
+            - BATTERY_PACK_CHARGING_STATUS_CHANGE
+            - BATTERY_PACK_CHARGING_CONNECTION_STATUS_CHANGE
+        - $ref: '#/parameters/lastVin'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/VehiclePositionResponseObject'
+        '400':
+          $ref: '#/responses/BadRequest'
+        '401':
+          $ref: '#/responses/Unauthorized'
+        '403':
+          $ref: '#/responses/Forbidden'
+        '404':
+          $ref: '#/responses/NotFound'
+        '406':
+          $ref: '#/responses/NotAcceptable'
+        '429':
+          $ref: '#/responses/TooManyRequests'
+  /vehiclestatuses:
+    get:
+      tags:
+        - Vehicle Data
+      summary: Status for one or more vehicles
+      description: >-
+        The vehicle status resource is used to get the status reports for one or
+        several vehicles. Using the starttime, stoptime & latestOnly parameters
+        it can be used to get all historical status reports between a start and
+        stop time or the latest known status only. Using the vin parameter it
+        can be used to get all historical vehicle reports or latest status for
+        one individual vehicle. If a request is made for data in a period where
+        no data has been received, an empty list will be returned.
+      produces:
+        - application/x.volvogroup.com.vehiclestatuses.v1.0+json; UTF-8
+      parameters:
+        - $ref: '#/parameters/requestId'
+        - $ref: '#/parameters/datetype'
+        - $ref: '#/parameters/starttime'
+        - $ref: '#/parameters/stoptime'
+        - $ref: '#/parameters/vin'
+        - name: contentFilter
+          in: query
+          description: >-
+            Will only return data reports that contain information in the area
+            defined by the filters. Detailed information for this parameter can
+            be found in the Content chapter. If this filter parameter isn’t
+            supplied the returned reports contain all available blocks.
+          required: false
+          type: array
+          collectionFormat: csv
+          items:
+            type: string
+            enum:
+              - ACCUMULATED
+              - SNAPSHOT
+              - UPTIME
+        - name: additionalContent
+          in: query
+          description: >-
+            Returns additional data reports as specified in this parameter, in a
+            comma separated list. If this parameter isn’t supplied the returned
+            reports contain no additional content. VOLVOGROUPSNAPSHOT -
+            Addtional Volvo Group snapshot content VOLVOGROUPACCUMULATED -
+            Addtional Volvo Group accumulated data content
+          required: false
+          type: array
+          collectionFormat: csv
+          items:
+            type: string
+            enum:
+              - VOLVOGROUPSNAPSHOT
+              - VOLVOGROUPACCUMULATED
+        - name: triggerFilter
+          in: query
+          description: >-
+            Will only return data reports that were triggered by the triggers
+            defined by the filter. Detailed information for this parameter can
+            be found in the Trigger filter chapter in the API documentation.
+          required: false
+          type: array
+          collectionFormat: csv
+          items:
+            type: string
+            enum:
+              - TIMER
+              - TELL_TALE
+              - DRIVER_LOGIN
+              - DRIVER_LOGOUT
+              - IGNITION_ON
+              - IGNITION_OFF
+              - ENGINE_ON
+              - ENGINE_OFF
+              - PTO_ENABLED
+              - PTO_DISABLED
+              - DISTANCE_TRAVELLED
+              - DRIVER_1_WORKING_STATE_CHANGED
+              - DRIVER_2_WORKING_STATE_CHANGED
+              - GEOFENCE
+              - DTJ_ACTIVITY
+              - CARGO_DOOR
+              - CARGO_DEFROST
+              - DRIVING_WITHOUT_BEING_LOGGEDIN
+              - FUELLEVEL_CHANGED_WHILE_OFF
+              - ADBLUELEVEL_CHANGED_WHILE_OFF
+              - DTM
+              - STATUS_ON_DEMAND
+              - COLLISION_MITIGATION
+              - FLEET_OVERSPEED
+              - TACHO_OUT_OF_SCOPE_MODE
+              - IDLING
+              - TIRE_WARNING
+              - MOVEMENT
+              - NO_MOVEMENT
+              - TEMPERATURE_ALARM
+              - ADBLUELEVEL_LOW
+              - WITHOUT_ADBLUE
+              - BATTERY_PACK_HIGH_DISCHARGE
+              - BATTERY_PACK_ENERGY_USAGE
+              - BATTERY_PACK_CHARGING_STATUS_CHANGE
+              - BATTERY_PACK_CHARGING_CONNECTION_STATUS_CHANGE
+              - VEHICLE_COUPLER_UNLOCK_ALLOWED
+              - CLIMATE_STATUS
+              - BATTERY_PRECONDITIONING
+              - VEHICLE_MODE
+        - name: latestOnly
+          in: query
+          description: >-
+            If this value is set to true only the last latest vehicle status
+            event, matching the trigger filter (if used), is returned for each
+            vehicle in the response. If this value is set to false (or not
+            present) all vehicle status events matching the starttime/stoptime
+            criteria is returned for each vehicle in the response.
+          default: false
+          required: false
+          type: boolean
+        - $ref: '#/parameters/lastVin'
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/VehicleStatusResponseObject'
+        '400':
+          $ref: '#/responses/BadRequest'
+        '401':
+          $ref: '#/responses/Unauthorized'
+        '403':
+          $ref: '#/responses/Forbidden'
+        '404':
+          $ref: '#/responses/NotFound'
+        '406':
+          $ref: '#/responses/NotAcceptable'
+        '429':
+          $ref: '#/responses/TooManyRequests'
+responses:
+  BadRequest:
+    description: >-
+      The server cannot or will not process the request due to an apparent
+      client error  (e.g., malformed request syntax, invalid request message
+      framing, or deceptive request routing)
+       Possible reason: Mandatory field missing, e.g. Authentication Header empty or missing
+       The comments for the 4xx codes are from the Wikipedia article [List of HTTP status codes](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#4xx_Client_errors), which is released under the [Creative Commons Attribution-Share-Alike License 3.0](https://creativecommons.org/licenses/by-sa/3.0/). View authors on this [page](https://en.wikipedia.org/w/index.php?title=List_of_HTTP_status_codes&action=history).
+  Unauthorized:
+    description: >-
+      Similar to 403 Forbidden, but specifically for use when authentication is
+      required and has failed or has not yet been provided. The response must
+      include a WWW-Authenticate header field containing a challenge applicable
+      to the requested resource. See Basic access authentication and Digest
+      access authentication.
+       Possible reason: Wrong credentials and/or Login credentials expired
+       The comments for the 4xx codes are from the Wikipedia article [List of HTTP status codes](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#4xx_Client_errors), which is released under the [Creative Commons Attribution-Share-Alike License 3.0](https://creativecommons.org/licenses/by-sa/3.0/). View authors on this [page](https://en.wikipedia.org/w/index.php?title=List_of_HTTP_status_codes&action=history).
+  Forbidden:
+    description: >-
+      The request was a valid request, but the server is refusing to respond to
+      it. Unlike a 401 Unauthorized response, authenticating will make no
+      difference. On servers where authentication is required, this commonly
+      means that the provided credentials were successfully authenticated but
+      that the credentials still do not grant the client permission to access
+      the resource (e.g. a recognized user attempting to access restricted
+      content)
+       Possible reason: Insufficient rights for the service, no rights on any service of this vehicle and/or Response is too large
+       The comments for the 4xx codes are from the Wikipedia article [List of HTTP status codes](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#4xx_Client_errors), which is released under the [Creative Commons Attribution-Share-Alike License 3.0](https://creativecommons.org/licenses/by-sa/3.0/). View authors on this [page](https://en.wikipedia.org/w/index.php?title=List_of_HTTP_status_codes&action=history).
+  NotFound:
+    description: >-
+      The requested resource could not be found but may be available again in
+      the future.  Subsequent requests by the client are permissible
+       Possible reason: vehicle unknown and/or rFMS-Version not supported
+       The comments for the 4xx codes are from the Wikipedia article [List of HTTP status codes](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#4xx_Client_errors), which is released under the [Creative Commons Attribution-Share-Alike License 3.0](https://creativecommons.org/licenses/by-sa/3.0/). View authors on this [page](https://en.wikipedia.org/w/index.php?title=List_of_HTTP_status_codes&action=history).
+  NotAcceptable:
+    description: 'Possible reason: unsupported Accept parameter sent'
+  TooManyRequests:
+    description: >-
+      The user has sent too many requests in a given amount of time. Intended
+      for use with rate limiting schemes
+       Possible reason: Request sent too often and/or Max concurrent calls
+       The comments for the 4xx codes are from the Wikipedia article [List of HTTP status codes](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#4xx_Client_errors), which is released under the [Creative Commons Attribution-Share-Alike License 3.0](https://creativecommons.org/licenses/by-sa/3.0/). View authors on this [page](https://en.wikipedia.org/w/index.php?title=List_of_HTTP_status_codes&action=history).
+definitions:
+  VehicleResponseObject:
+    type: object
+    properties:
+      vehicleResponse:
+        type: object
+        properties:
+          vehicles:
+            type: array
+            items:
+              $ref: '#/definitions/VehicleObject'
+      moreDataAvailable:
+        type: boolean
+        description: >-
+          This will be set to true if the result set was too large to be sent
+          back in one reply. A new request must be sent to get the rest of the
+          vehicles, where the lastVin parameter must be supplied. The lastVin
+          should be set to the VIN of the last vehicle in the result set of this
+          message.
+    required:
+      - vehicleResponse
+      - moreDataAvailable
+  VehicleObject:
+    type: object
+    properties:
+      vin:
+        $ref: '#/definitions/VinProperty'
+      customerVehicleName:
+        type: string
+        description: The customer’s name for the vehicle.
+        example: Mike's truck
+      brand:
+        type: string
+        description: >-
+          The vehicle brand. rFMS standard values VOLVO TRUCKS, SCANIA, DAIMLER,
+          IVECO, DAF, MAN, RENAULT TRUCKS, VDL, VOLVO BUSES
+        example: VOLVO TRUCKS
+      productionDate:
+        type: object
+        description: Indicates when the vehicle was produced.
+        properties:
+          day:
+            type: integer
+            example: 1
+            description: Day of the month where first day of the month is 1
+          month:
+            type: integer
+            example: 4
+            description: 'Month of the year, where January is value 1'
+          year:
+            type: integer
+            example: 2018
+      type:
+        type: string
+        description: 'Indicates the type of vehicle. Examples TRUCK, BUS'
+        example: TRUCK
+      model:
+        type: string
+        description: Indicates the model of the vehicle. OEM specific value.
+        example: FH
+      possibleFuelType:
+        type: array
+        description: >-
+          The possible fuel types supported by this vehicle, formatted as the
+          HEX id number according to SPN 5837. This does NOT indicate which fuel
+          type that is presently being used.
+        items:
+          type: string
+          example: 1A
+      emissionLevel:
+        type: string
+        description: >-
+          'The emission level this vehicle supports. Possible values: European
+          Union, Heavy-Duty Truck and Bus Engines: EURO_III, EURO_III_EEV,
+          EURO_IV, EURO_V, EURO_VI European Union, Nonroad Engines:
+          EURO_STAGE_III, EURO_STAGE_IV, EURO_STAGE_V United_States, Heavy-Duty
+          Truck and Bus Engines: EPA_2004, EPA_2007, EPA_2010, EPA_2015_NOX10,
+          EPA_2015_NOX05, EPA_2015_NOX02 United_States, Nonroad Engines:
+          EPA_TIER_2, EPA_TIER_3, EPA_TIER_4_2008, EPA_TIER_4_2013 Brazil,
+          Heavy-Duty Truck and Bus Engines: PROCONVE_P5, PROCONVE_P6,
+          PROCONVE_P7 Brazil, Nonroad Engines: PROCONVE_MARI'
+        example: EURO_VI
+      tellTaleCode:
+        type: string
+        description: >-
+          This parameter indicates how the tell tales shall be interpreted, the
+          code is unique for each OEM. One OEM can have different
+          interpretations  depending on vehicle type.
+      chassisType:
+        type: string
+        description: >-
+          The chassis type of the vehicle. OEM specific value. In the rFMS
+          standard this is used for busses.
+      noOfAxles:
+        type: integer
+        description: >-
+          Number of axles on the vehicle. In the rFMS standard this is used for
+          busses.
+        example: 2
+      totalFuelTankVolume:
+        type: integer
+        description: >-
+          Total fuel volume for all tanks. In the rFMS standard this is used for
+          busses.
+        example: 500
+      tachographType:
+        type: string
+        description: >-
+          The type of tachograph in the vehicle. rFMS standard values MTCO,
+          DTCO, TSU, NONE (indicating that there are no Tacho in the vehicle) In
+          the rFMS standard this is used for busses.
+        example: MTCO
+      gearboxType:
+        type: string
+        description: >-
+          The type of gearbox the vehicle is equipped with. rFMS standard values
+          MANUAL, AUTOMATIC, SEMI_AUTOMATIC, NO_GEAR (e.g electrical) In the
+          rFMS standard this is used for busses.
+        example: AUTOMATIC
+      bodyType:
+        type: string
+        description: >-
+          The type of body on the chassis. rFMS standard values CITY_BUS,
+          INTERCITY_BUS, COACH In the rFMS standard this is used for busses.
+        example: CITY_BUS
+      doorConfiguration:
+        type: array
+        description: >-
+          The door configuration. The door order definition is OEM specific.
+          E.g. [1, 2, 2] means the bus has 3 doors: 1 front door, double doors
+          for door 2 and 3 In the rFMS standard this is used for busses.
+        items:
+          type: integer
+        example:
+          - 1
+          - 2
+          - 2
+      hasRampOrLift:
+        type: boolean
+        description: >-
+          If the vehicle is equipped with a ramp or not. In the rFMS standard
+          this is used for busses.
+      volvoGroupVehicle:
+        $ref: '#/definitions/VolvoGroupVehicleObject'
+    required:
+      - vin
+      - brand
+      - type
+  VolvoGroupVehicleObject:
+    type: object
+    properties:
+      countryOfOperation:
+        type: string
+        description: Country where vehicle is legally registered when delivered.
+      deliveryDate:
+        type: string
+        format: date
+        description: >-
+          The date the vehicle was delivered to the end customer. In format
+          YYYY-MM-DD
+      registrationNumber:
+        type: string
+        description: Registration number on the vehicle license plate.
+      roadCondition:
+        type: string
+        description: 'Intended road condition for vehicle. Example of values SMOOTH, ROUGH'
+        example: SMOOTH
+      totalFuelTankCapacityGaseous:
+        type: number
+        format: double
+        description: Total gas tank capacity for all tanks in kilograms.
+        example: 155
+      transportCycle:
+        type: string
+        description: >-
+          Intended transport cycle for vehicle. Example of values LONG_DISTANCE,
+          DISTRIBUTION, CONSTRUCTION
+        example: LONG_DISTANCE
+      vehicleReportSettings:
+        type: object
+        properties:
+          roadOverspeedLimit:
+            type: integer
+            description: >-
+              This value defines the limit (km/h) when the vehicle starts to
+              report roadoverspeed in volvoGroupAccumulated
+      connectedServices:
+        type: array
+        description: >-
+          List of active commercial services. The commercial services have
+          different names between brands. Same commercial service can have
+          different name between solution e.g. Dynafleet Position same as
+          Optifleet MAP.  
+        items:
+          type: string
+        example:
+          - Messaging
+          - LINK
+          - MAP
+          - Positioning
+          - DriverTimes
+    required:
+      - connectedServices
+  VehiclePositionResponseObject:
+    type: object
+    properties:
+      vehiclePositionResponse:
+        type: object
+        properties:
+          vehiclePositions:
+            type: array
+            items:
+              $ref: '#/definitions/VehiclePositionObject'
+      moreDataAvailable:
+        type: boolean
+        description: >-
+          This will be set to true if the result set was too large to be sent
+          back in one reply. A new request must be sent to get the rest of the
+          vehicle positions, where the starttime parameter must be supplied. The
+          starttime should be set to the ReceivedDateTime of the last vehicle in
+          the result set of this message.
+      requestServerDateTime:
+        type: string
+        format: date-time
+        description: >-
+          Time to be used to ask for historical data at customers (for
+          starttime), to solve the problem of having different times at server
+          and clients. This is the time at the server when this request was
+          received. To avoid losing any messages or get duplicates, this is the
+          time that should be supplied in the startTime parameter in the next
+          request in iso8601 format.
+    required:
+      - vehiclePositionResponse
+      - moreDataAvailable
+      - requestServerDateTime
+  VehiclePositionObject:
+    type: object
+    properties:
+      vin:
+        $ref: '#/definitions/VinProperty'
+      triggerType:
+        $ref: '#/definitions/TriggerObject'
+      createdDateTime:
+        $ref: '#/definitions/CreatedDateTimeProperty'
+      receivedDateTime:
+        $ref: '#/definitions/ReceivedDateTimeProperty'
+      gnssPosition:
+        $ref: '#/definitions/GNSSPositionObject'
+      wheelBasedSpeed:
+        type: number
+        format: double
+        description: >-
+          Wheel-Based Vehicle Speed in km/h (Speed of the vehicle as calculated
+          from wheel or tailshaft speed)
+        example: 54.3
+      tachographSpeed:
+        type: number
+        format: double
+        description: >-
+          Tachograph vehicle speed in km/h (Speed of the vehicle registered by
+          the tachograph)
+        example: 54.1
+    required:
+      - vin
+      - triggerType
+      - createdDateTime
+      - receivedDateTime
+      - gnssPosition
+      - wheelBasedSpeed
+  VehicleStatusResponseObject:
+    type: object
+    properties:
+      vehicleStatusResponse:
+        type: object
+        properties:
+          vehicleStatuses:
+            type: array
+            items:
+              $ref: '#/definitions/VehicleStatusObject'
+      moreDataAvailable:
+        type: boolean
+        description: >-
+          This will be set to true if the result set was too large to be sent
+          back in one reply. A new request must be done to get the rest of the
+          vehicle statuses, where the starttime parameter must be supplied. The
+          starttime should be set to the ReceivedDateTime of the last vehicle in
+          the result set of this message.
+      requestServerDateTime:
+        type: string
+        format: date-time
+        description: >-
+          Time in UTC to be used to ask for historical data (for starttime), to
+          solve the problem of having different times at server and clients.
+          This is the time at the server when this request was received. To
+          avoid losing any messages or get duplicates, this is the time that
+          should be supplied in the startTime parameter in the next request in
+          iso8601 format.
+    required:
+      - vehicleStatusResponse
+      - moreDataAvailable
+      - requestServerDateTime
+  VehicleStatusObject:
+    type: object
+    properties:
+      vin:
+        $ref: '#/definitions/VinProperty'
+      triggerType:
+        $ref: '#/definitions/TriggerObject'
+      createdDateTime:
+        $ref: '#/definitions/CreatedDateTimeProperty'
+      receivedDateTime:
+        $ref: '#/definitions/ReceivedDateTimeProperty'
+      hrTotalVehicleDistance:
+        type: integer
+        format: int64
+        description: >-
+          Accumulated distance travelled by the vehicle during its operation in
+          meter
+        example: 34567891
+      totalEngineHours:
+        type: number
+        format: double
+        description: The total hours of operation for the vehicle engine.
+        example: 1234.3
+      driver1Id:
+        $ref: '#/definitions/DriverIdObject'
+      grossCombinationVehicleWeight:
+        type: integer
+        description: The full vehicle weight in kg
+        example: 23456
+      engineTotalFuelUsed:
+        type: integer
+        format: int64
+        description: >-
+          The total fuel the vehicle has used during its lifetime in
+          MilliLitres.
+        example: 7890123
+      status2OfDoors:
+        type: string
+        description: Bus specific parameter
+        enum:
+          - ALL_DOORS_DISABLED
+          - AT_LEAST_ONE_DOOR_ENABLED
+          - ERROR
+          - NOT_AVAILABLE
+        example: ALL_DOORS_DISABLED
+      doorStatus:
+        type: array
+        items:
+          type: object
+          properties:
+            DoorEnabledStatus:
+              type: string
+              enum:
+                - ENABLED
+                - DISABLED
+                - ERROR
+                - NOT_AVAILABLE
+              example: ENABLED
+            DoorOpenStatus:
+              type: string
+              enum:
+                - CLOSED
+                - OPEN
+                - ERROR
+                - NOT_AVAILABLE
+              example: CLOSED
+            DoorLockStatus:
+              type: string
+              enum:
+                - UNLOCKED
+                - LOCKED
+                - ERROR
+                - NOT_AVAILABLE
+              example: UNLOCKED
+            DoorNumber:
+              type: integer
+              example: 1
+      accumulatedData:
+        $ref: '#/definitions/AccumulatedDataObject'
+      snapshotData:
+        $ref: '#/definitions/SnapshotDataObject'
+      uptimeData:
+        $ref: '#/definitions/UptimeDataObject'
+    required:
+      - vin
+      - triggerType
+      - createdDateTime
+      - receivedDateTime
+      - hrTotalVehicleDistance
+      - totalEngineHours
+      - engineTotalFuelUsed
+  AccumulatedDataObject:
+    type: object
+    properties:
+      durationWheelbaseSpeedOverZero:
+        type: integer
+        format: int64
+        description: The time the vehicle speed has been over zero.
+        example: 123456
+      distanceCruiseControlActive:
+        type: integer
+        format: int64
+        description: The distance the vehicle has been driven with cruise control active
+        example: 23456
+      durationCruiseControlActive:
+        type: integer
+        format: int64
+        description: The time the vehicle has been driven with cruise control active
+        example: 45678
+      fuelConsumptionDuringCruiseActive:
+        type: integer
+        format: int64
+        description: >-
+          The fuel consumption the vehicle has consumed while driven with cruise
+          control active
+        example: 987654
+      durationWheelbaseSpeedZero:
+        type: integer
+        format: int64
+        description: >-
+          The time the vehicle speed has been equal to zero. Engine on (RPM>0)
+          and no PTO active
+        example: 12345
+      fuelWheelbaseSpeedZero:
+        type: integer
+        format: int64
+        description: >-
+          The fuel consumption the vehicle has consumed while the vehicle speed
+          has been equal to zero. Engine on (RPM>0) and no PTO active. Unit in
+          millilitres.
+        example: 87654
+      fuelWheelbaseSpeedOverZero:
+        type: integer
+        format: int64
+        description: >-
+          The fuel consumption the vehicle has consumed while the vehicle speed
+          has been over zero. Engine on (RPM>0)
+      ptoActiveClass:
+        type: array
+        items:
+          $ref: '#/definitions/LabelObject'
+        description: >-
+          Labels WHEELBASED_SPEED_OVER_ZERO, WHEELBASED_SPEED_ZERO at least one
+          PTO on during wheelbased speed =0 counter in seconds and millilitres
+          at least one PTO on during wheelbased speed>0 counter in seconds,
+          millilitres (includes consumption of driving) and meter driven
+        example:
+          - label: WHEELBASED_SPEED_OVER_ZERO
+            seconds: 12345
+            meters: 2345
+            milliLitres: 3456
+      brakePedalCounterSpeedOverZero:
+        type: integer
+        format: int64
+        description: >-
+          The total number of times the brake pedal has been used while the
+          vehicle was driving.
+        example: 12765
+      distanceBrakePedalActiveSpeedOverZero:
+        type: integer
+        format: int64
+        description: >-
+          The total distance the vehicle has driven where the brake pedal has
+          been used. Unit Meters.
+        example: 1456
+      accelerationPedalPositionClass:
+        type: array
+        items:
+          $ref: '#/definitions/FromToClassObject'
+        description: >-
+          In percent. Minimum 5 classes [0, 20[ [20, 40[ [40, 60[ [60, 80[ [80,
+          100]
+        example:
+          - from: 0
+            to: 20
+            seconds: 23456
+            meters: 345678
+            milliLitres: 678345
+      accelerationClass:
+        type: array
+        items:
+          $ref: '#/definitions/FromToClassObject'
+        description: >-
+          In m/s2 Minimum 13 classes. ], -1.1] ]-1.1, -0.9] ]-0.9, -0.7] ]-0.7,
+          -0.5] ]-0.5, -0.3] ]-0.3, -0.1] ]-0.1, 0.1[ [0.1, 0.3[ [0.3, 0.5[
+          [0.5, 0.7[ [0.7, 0.9[ [0.9, 1.1[ [1.1, [
+        example:
+          - from: -1.1
+            to: -0.9
+            seconds: 23456
+            meters: 345678
+            milliLitres: 678345
+      highAccelerationClass:
+        type: array
+        items:
+          $ref: '#/definitions/FromToClassObject'
+        description: >-
+          In m/s2 Minimum 11 classes ], -3.0] ]-3.0, -2.5] ]-2.5, -2.0] ]-2.0,
+          -1.5] ]-1.5, -1.1] ]-1.1, 1.1[ [1.1, 1.5[ [1.5, 2.0[ [2.0, 2.5[ [2.5,
+          3.0[ [3.0, [
+        example:
+          - from: -3
+            to: -2.5
+            seconds: 23456
+            meters: 345678
+            milliLitres: 678345
+      retarderTorqueClass:
+        type: array
+        items:
+          $ref: '#/definitions/FromToClassObject'
+        description: >-
+          In percent (how the retarder is used as a positive value). Minimum 5
+          classes ]0, 20[ [20, 40[ [40, 60[ [60, 80[ [80, 100]
+        example:
+          - from: 0
+            to: 20
+            seconds: 23456
+            meters: 345678
+            milliLitres: 678345
+      drivingWithoutTorqueClass:
+        type: array
+        items:
+          $ref: '#/definitions/LabelObject'
+        description: >-
+          The total number of seconds/meters used while driving without torque.
+          With gear (clutch is engaged) Labels DRIVING_WITHOUT_TORQUE
+        example:
+          - label: DRIVING_WITHOUT_TORQUE
+            seconds: 12345
+            meters: 2345
+            milliLitres: 3456
+      engineTorqueClass:
+        type: array
+        items:
+          $ref: '#/definitions/FromToClassObject'
+        description: >-
+          In percent based on EEC1 value (Actual Engine-Percent Torque). Minimum
+          10 classes [0, 10[ [10, 20[ [20, 30[ [30, 40[ [40, 50[ [50, 60[ [60,
+          70[ [70, 80[ [80, 90[ [90, 100]
+        example:
+          - from: 0
+            to: 10
+            seconds: 23456
+            meters: 345678
+            milliLitres: 678345
+      engineTorqueAtCurrentSpeedClass:
+        type: array
+        items:
+          $ref: '#/definitions/FromToClassObject'
+        description: >-
+          In percent based on EEC2 value (Engine Percent Load At Current Speed).
+          Minimum 10 classes [0, 10[ [10, 20[ [20, 30[ [30, 40[ [40, 50[ [50,
+          60[ [60, 70[ [70, 80[ [80, 90[ [90, 100]
+        example:
+          - from: 0
+            to: 10
+            seconds: 23456
+            meters: 345678
+            milliLitres: 678345
+      vehicleSpeedClass:
+        type: array
+        items:
+          $ref: '#/definitions/FromToClassObject'
+        description: >-
+          In km/h Minimum 40 classes. [0, 4[ [4, 8[ [8, 12[ [12, 16[ [16, 20[
+          [20, 24[ ... [156, [ Engine on (RPM>0)
+        example:
+          - from: 0
+            to: 4
+            seconds: 23456
+            meters: 345678
+            milliLitres: 678345
+      engineSpeedClass:
+        type: array
+        items:
+          $ref: '#/definitions/FromToClassObject'
+        description: >-
+          In RPM Minimum 10 classes [0, 400[ [400, 800[ [800, 1200[ [1200, 1600[
+          [1600, 2000[ [2000, 2400[ [2400, 2800[ [2800, 3200[ [3200, 3600[
+          [3600, [
+        example:
+          - from: 0
+            to: 400
+            seconds: 23456
+            meters: 345678
+            milliLitres: 678345
+      accelerationDuringBrakeClass:
+        type: array
+        items:
+          $ref: '#/definitions/FromToClassObject'
+        description: >-
+          In m/s2 Minimum 13 classes. ], -1.1] ]-1.1, -0.9] ]-0.9, -0.7] ]-0.7,
+          -0.5] ]-0.5, -0.3] ]-0.3, -0.1] ]-0.1, 0.1[ [0.1, 0.3[ [0.3, 0.5[
+          [0.5, 0.7[ [0.7, 0.9[ [0.9, 1.1[ [1.1, [
+        example:
+          - from: -1.1
+            to: -0.9
+            seconds: 23456
+            meters: 345678
+            milliLitres: 678345
+      selectedGearClass:
+        type: array
+        items:
+          $ref: '#/definitions/LabelObject'
+        description: >-
+          The currently selected gear One class per gear. Neutral is also a
+          gear. Park is also a gear. This is formatted according to SPN 524,
+          supplied as a decimal value. Example 0 = Neutral, 1 = 1:st gear...
+          This is mainly used for Busses
+        example:
+          - label: 0
+            seconds: 12345
+            meters: 2345
+            milliLitres: 3456
+      currentGearClass:
+        type: array
+        items:
+          $ref: '#/definitions/LabelObject'
+        description: >-
+          The currently used gear One class per gear. Neutral is also a gear.
+          Park is also a gear. This is formatted according to SPN 523, supplied
+          as a decimal value. Example 0 = Neutral, 1 = 1:st gear... This is
+          mainly used for Busses
+        example:
+          - label: 0
+            seconds: 12345
+            meters: 2345
+            milliLitres: 3456
+      chairliftCounter:
+        type: integer
+        format: int64
+        description: >-
+          The total number of times the chairlift has been outside the bus. This
+          is mainly used for Busses
+        example: 568
+      stopRequestCounter:
+        type: integer
+        format: int64
+        description: The total number of stop requests made. This is mainly used for Busses
+        example: 4567
+      kneelingCounter:
+        type: integer
+        format: int64
+        description: The total number of times the bus has knelt.
+        example: 976
+      pramRequestCounter:
+        type: integer
+        format: int64
+        description: The total number of pram requests made. This is mainly used for Busses
+        example: 123
+      volvoGroupAccumulated:
+        $ref: '#/definitions/VolvoGroupAccumulatedObject'
+  VolvoGroupAccumulatedObject:
+    type: object
+    properties:
+      brakeCount:
+        type: integer
+        format: int64
+        description: >-
+          The total number of times the brake pedal has been used. Not same as
+          brakePedalCounterSpeedOverZero, since this parameter is increased even
+          if the vehicles speed is zero.
+      coasting:
+        description: >-
+          Total time, distance and fuel consumption for the vehicle while moving
+          without acceleration (manually or cruise control).
+        type: object
+        properties:
+          seconds:
+            type: integer
+            format: int64
+          meters:
+            type: integer
+            format: int64
+          milliLitres:
+            type: integer
+            format: int64
+      engineOverload:
+        description: >-
+          Total time, distance and fuel consumption for the vehicle when engine
+          load is over 90 % of its capacity.
+        type: object
+        properties:
+          seconds:
+            type: integer
+            format: int64
+          meters:
+            type: integer
+            format: int64
+          milliLitres:
+            type: integer
+            format: int64
+          kilograms:
+            type: number
+            format: double
+      engineOverrev:
+        description: >-
+          Total time, distance and fuel consumption for the vehicle when engine
+          is above allowed rpm, e.g. within red zone.
+        type: object
+        properties:
+          seconds:
+            type: integer
+            format: int64
+          meters:
+            type: integer
+            format: int64
+          milliLitres:
+            type: integer
+            format: int64
+          kilograms:
+            type: number
+            format: double
+      engineWithinGreenArea:
+        description: >-
+          Total time, distance and fuel consumption for the vehicle within
+          economy rpm range/green zone.
+        type: object
+        properties:
+          seconds:
+            type: integer
+            format: int64
+          meters:
+            type: integer
+            format: int64
+          milliLitres:
+            type: integer
+            format: int64
+          kilograms:
+            type: number
+            format: double
+      engineOutOfGreenArea:
+        description: >-
+          Total time, distance and fuel consumption for the vehicle above
+          economy rpm range/green zone.
+        type: object
+        properties:
+          seconds:
+            type: integer
+            format: int64
+          meters:
+            type: integer
+            format: int64
+          milliLitres:
+            type: integer
+            format: int64
+          kilograms:
+            type: number
+            format: double
+      transmissionModeSeconds:
+        description: 'Total time for transmission in POWER, AUTO and MANUAL mode.'
+        type: array
+        items:
+          type: object
+          properties:
+            label:
+              type: string
+              enum:
+                - POWER
+                - AUTO
+                - MANUAL
+            value:
+              type: integer
+              format: int64
+        example:
+          - label: AUTO
+            value: 56789
+      convoyWeightMeters:
+        description: >-
+          Vehicle distance for different conwoy weights (weight values are
+          provided from the electronic braking system (EBS)) LIGHT: Distance
+          driven with light convoy weight. MEDIUM: Distance driven with medium
+          convoy weight. FULL: Distance driven with full convoy weight.
+        type: array
+        items:
+          type: object
+          properties:
+            label:
+              type: string
+              enum:
+                - LIGHT
+                - MEDIUM
+                - FULL
+            value:
+              type: integer
+              format: int64
+        example:
+          - label: FULL
+            value: 78901
+      roadOverspeed:
+        description: >-
+          Total time, distance and fuel consumption when the vehicle speed is
+          above the fleet defined speed limit set by fleet manager.
+        type: object
+        properties:
+          seconds:
+            type: integer
+            format: int64
+          meters:
+            type: integer
+            format: int64
+          milliLitres:
+            type: integer
+            format: int64
+          kilograms:
+            type: number
+            format: double
+          watthours:
+            type: integer
+            format: int64
+      stopCount:
+        type: integer
+        format: int64
+        description: How may times the vehicle is totally stopped. Speed=0.
+      topGear:
+        description: >-
+          Total time, distance and fuel consumption when the vehicle is in Top
+          Gear mode.
+        type: object
+        properties:
+          seconds:
+            type: integer
+            format: int64
+          meters:
+            type: integer
+            format: int64
+          milliLitres:
+            type: integer
+            format: int64
+      engineTotalCatalystUsed:
+        type: integer
+        format: int64
+        description: Total AdBlue consumed in millilitres.
+      withoutCatalyst:
+        description: 'Total time, distance and fuel consumption without adblue'
+        type: object
+        properties:
+          seconds:
+            type: integer
+            format: int64
+          meters:
+            type: integer
+            format: int64
+          milliLitres:
+            type: integer
+            format: int64
+      electricEnergyAuxClass:
+        type: array
+        items:
+          $ref: '#/definitions/VolvoGroupLabelObject'
+        description: >-
+          The electric energy the auxiliary systems have consumed, in watt
+          hours. Auxiliary systems are all consumers except electric motor(s)
+          and PTO(s). LV - Low voltage system LV_WHEELBASED_SPEED_ZERO - Low
+          voltage system during wheelbased speed = 0
+          LV_WHEELBASED_SPEED_OVER_ZERO - Low voltage system during wheelbased
+          speed > 0 HV - High voltage system HV_WHEELBASED_SPEED_ZERO - High
+          voltage system during wheelbased speed = 0
+          HV_WHEELBASED_SPEED_OVER_ZERO - High voltage system during wheelbased
+          speed > 0
+        example:
+          - label: LV_WHEELBASED_SPEED_ZERO
+            watthours: 12345
+      electricEnergyFromChargingDeviceClass:
+        type: array
+        items:
+          $ref: '#/definitions/VolvoGroupLabelObject'
+        description: >-
+          Total energy from the charging systems in watt hours. AC - Alternating
+          current DC - Direct current
+        example:
+          - label: DC
+            watthours: 12345
+      electricEnergyPropulsion:
+        type: integer
+        format: int64
+        description: Total energy used by electric motor for propulsion in watt hours
+        example: 115532
+      electricEnergyRecuperation:
+        type: object
+        description: >-
+          Energy recuperation active Counters for time (seconds), consumption
+          (watt-hours) and distance (meters)
+        properties:
+          seconds:
+            type: integer
+            format: int64
+            example: 3700
+          meters:
+            type: integer
+            format: int64
+            example: 2500
+          watthours:
+            type: integer
+            format: int64
+            example: 2500
+      totalElectricEnergyUsed:
+        type: integer
+        format: int64
+        description: >-
+          Total electric energy consumed by the vehicle, excluding when  plugged
+          in (vehicle coupler) for charging, (incl. motor, PTO, cooling,  etc.)
+          in watt hours. Recuperation is subtracted from the value.  At least
+          one of engineTotalFuelUsed or totalElectricEnergyUsed is mandatory.
+        example: 115532
+      totalElectricEnergyUsedPluggedInIncluded:
+        type: number
+        format: double
+        description: >-
+          Total electric energy consumed by the vehicle, including when plugged
+          in for charging, (incl. motor, PTO, cooling, etc.) in watt hours.
+          Recuperation is subtracted from the value.
+        example: 115532
+      electricEnergyWheelbasedSpeedOverZero:
+        type: number
+        format: double
+        description: >-
+          The electric energy the vehicle has consumed (including recuperation)
+          while the vehicle speed has been over zero. Electric motor is in crank
+          mode. Unit in watt-hours.
+        example: 82512
+      electricEnergyWheelbasedSpeedZero:
+        type: number
+        format: double
+        description: >-
+          The electric energy the vehicle has consumed while the vehicle speed
+          has been equal to zero. Electric motor is in crank mode and no PTO
+          active. Unit in watt-hours.
+        example: 82512.2
+      totalElectricMotorHours:
+        type: number
+        format: double
+        description: >-
+          The total hours the electric motor is ready for propulsion (i.e. crank
+          mode). At least one of totalEngineHours or totalElectricMotorHours is
+          mandatory
+        example: 127.2
+      ptoActiveClass:
+        type: array
+        items:
+          $ref: '#/definitions/VolvoGroupLabelObject'
+        description: >-
+          At least one PTO active Counters for time (seconds), consumption
+          (watt-hours), distance (meters) and activation counters (counter) AC -
+          Alternating current PTO AC_WHILE_CHARGING - Alternating current PTO
+          while charging AC_WHEELBASED_SPEED_ZERO - Alternating current PTO
+          while wheelbased speed = 0 AC_WHEELBASED_SPEED_OVER_ZERO - Alternating
+          current PTO while wheelbased speed > 0 DC - Direct current PTO
+          DC_WHILE_CHARGING - Direct current PTO while charging
+          DC_WHEELBASED_SPEED_ZERO - Direct current PTO while wheelbased speed =
+          0 DC_WHEELBASED_SPEED_OVER_ZERO - Direct current PTO while wheelbased
+          speed > 0 MECH - Mechanical PTO MECH_WHILE_CHARGING - Mechanical PTO
+          while charging MECH_WHEELBASED_SPEED_ZERO - Mechanical PTO while
+          wheelbased speed = 0 MECH_WHEELBASED_SPEED_OVER_ZERO - Mechanical PTO
+          while wheelbased speed > 0 GEARBOX - Gearbox PTO
+          GEARBOX_WHILE_CHARGING - Gearbox PTO while charging
+          GEARBOX_WHEELBASED_SPEED_ZERO - Gearbox PTO while wheelbased speed = 0
+          GEARBOX_WHEELBASED_SPEED_OVER_ZERO - Gearbox PTO while wheelbased
+          speed > 0 ALL - At least one of AC,DC,MECH or GEARBOX PTO
+          ALL_WHILE_CHARGING - At least one of AC,DC,MECH or GEARBOX PTO while
+          charging ALL_WHEELBASED_SPEED_OVER_ZERO - At least one of AC,DC,MECH
+          or GEARBOX PTO while wheelbased speed > 0 ALL_WHEELBASED_SPEED_ZERO -
+          At least one of AC,DC,MECH or GEARBOX PTO while wheelbased speed = 0
+          PTO1 - PTO number 1 PTO2 - PTO number 2 PTO3 - PTO number 3 PTO4 - PTO
+          number 4
+        example:
+          - label: WHEELBASED_SPEED_OVER_ZERO
+            seconds: 12345
+            meters: 2345
+            watthours: 3456
+            counter: 3
+      edriveMode:
+        type: array
+        items:
+          $ref: '#/definitions/VolvoGroupLabelObject'
+        description: >-
+          Electrical drive mode Counters for time (seconds), consumption
+          (watt-hours) and distance (meters) PERFORMANCE - Performance drive
+          mode STANDARD - Standard drive mode RANGE - Range drive mode
+        example:
+          - label: STANDARD
+            seconds: 12345
+            meters: 2345
+            watthours: 3456
+      driverAlertWarningMinorCounter:
+        type: integer
+        format: int64
+        description: The total number of minor Driver Alert Support (DAS) warnings
+        example: 2546
+      lanekeepingWarningCounter:
+        type: integer
+        format: int64
+        description: The total number of Lane Keeping Support (LKS) warnings
+        example: 324234
+      totalFuelUsedGaseous:
+        type: number
+        format: double
+        description: >-
+          Total fuel consumed in kg (trip drive fuel + trip PTO governor moving
+          fuel + trip PTO governor non-moving fuel + trip idle fuel) over the
+          life of the engine. At least one of engineTotalFuelUsed,
+          totalFuelUsedGaseous or totalElectricEnergyUsed is mandatory.
+        example: 7890.25
+      fuelConsumptionDuringCruiseActiveGaseous:
+        type: number
+        format: double
+        description: >-
+          The gas the vehicle has consumed while driven with cruise control
+          active, in kilograms.
+        example: 987.65
+      fuelWheelbasedSpeedZeroGaseous:
+        type: number
+        format: double
+        description: >-
+          The gas the vehicle has consumed while the vehicle speed has been
+          equal to zero. Engine on (RPM>0) and no PTO active. Unit in kilograms.
+        example: 8.5
+      fuelWheelbasedSpeedOverZeroGaseous:
+        type: number
+        format: double
+        description: >-
+          The gas the vehicle has consumed while the vehicle speed has been over
+          zero. Engine on (RPM>0). Unit in kilograms.
+        example: 8274.7
+      driveMode:
+        type: array
+        items:
+          $ref: '#/definitions/VolvoGroupLabelObject'
+        description: >-
+          Diesel and LNG drive mode Counters for time (seconds), consumption
+          (milliLitres, kilograms) and distance (meters) PERFORMANCE -
+          Performance mode is designed to deliver maximum power and optimal
+          drivability, allowing the driver to achieve high average speeds and
+          strong acceleration on the road. HEAVYDUTY - HeavyDuty mode utilizes
+          margins to maintain high torque availability after shifts, effectively
+          managing the high gross combination weight. OFFROAD - The off road
+          mode shall be tuned for high drivability in the off road. ECONOMY - In
+          Economy drive mode, the transmission is optimized to minimize fuel
+          consumption. KICKDOWN - Kickdown mode is a driving setting triggered
+          by fully pressing the accelerator pedal, enabling the vehicle to
+          deliver maximum power.  STANDARD - The standard mode shall provide
+          balance between performance and economy without compromising with
+          comfort of the driver.
+        example:
+          - label: PERFORMANCE
+            seconds: 12345
+            meters: 2345
+            milliLitres: 3456
+      topographyClass:
+        type: array
+        items:
+          $ref: '#/definitions/FromToClassObject'
+        description: >-
+          In percent each class shows distance traveled in Uphill, flat and
+          downHill. Minimum 32 classes Downhill - ], -20] ]-20, -16] ]-16, -14]
+          ]-14, -12] ]-12, -11] ]-11, -10] ]-10, -9] ]-9, -8] ]-8, -7] ]-7, -6]
+          ]-6, -5] ]-5, -4] ]-4, -3]  Flat - ]-3, -2] ]-2, -1] ]-1, 0[ [0, 1[
+          [1, 2[ [2, 3[  Uphill - [3, 4[ [4, 5[ [5, 6[ [6, 7[ [7, 8[ [8, 9[ [9,
+          10[ [10, 11[ [11, 12[ [12, 14[ [14, 16[ [16, 20[ [20, [
+        example:
+          - from: -20
+            to: -16
+            meters: 345678
+      electricEnergyAirCompressor:
+        type: number
+        format: double
+        description: >-
+          Total energy consumed by air compressor in watt hours during the
+          lifetime of the vehicle.
+        example: 182.7
+      durationAirConditioningActive:
+        type: integer
+        format: int64
+        description: >-
+          Total time air conditioning has been active in seconds during the
+          lifetime of the vehicle.
+        example: 12000
+      antiSlipCounter:
+        type: integer
+        format: int64
+        description: The total number of times the anti-slip regulation has engaged.
+        example: 1211
+      auxiliaryBrake:
+        type: object
+        description: >-
+          Total time (seconds) and distance (meters) auxiliary brake has been
+          used during the lifetime of the vehicle.
+        properties:
+          seconds:
+            type: integer
+            format: int64
+            example: 3700
+          meters:
+            type: integer
+            format: int64
+            example: 100
+      brakeAndAutomaticRetarderCounter:
+        type: integer
+        description: >-
+          The total number of times the brake pedal and retarder in automatic
+          mode are active simultaneously during the lifetime of the vehicle.
+        format: int64
+        example: 1
+      brakeAndManualRetarderCounter:
+        type: integer
+        description: >-
+          The total number of times the retarder in automatic mode is activated
+          while using the break pedal during the lifetime of the vehicle.
+        format: int64
+        example: 0
+      durationRetarderActive:
+        type: integer
+        description: >-
+          The total number of times the retarder in manual mode is activated
+          while using the break pedal during the lifetime of the vehicle.
+        format: int64
+        example: 1579047
+      noBrakeAndAutomaticRetarderCounter:
+        type: integer
+        description: >-
+          The total number of times the retarder in automatic mode is activated
+          while not using break pedal during the lifetime of the vehicle.
+        format: int64
+        example: 334391
+      noBrakeAndManualRetarderCounter:
+        type: integer
+        description: >-
+          The total number of times the retarder in manual mode is activated
+          while not using break pedal during the lifetime of the vehicle.
+        format: int64
+        example: 0
+      engineRevolutions:
+        type: integer
+        description: >-
+          Total number of revolutions of the engine crankshaft during its
+          operation.
+        format: int64
+        example: 328751000
+      brakeAndNoRetarderCounter:
+        type: integer
+        description: >-
+          The total number of times the brake pedal has been used without active
+          retarders.
+        format: int64
+        example: 118881
+      distanceBrakeAndNoRetarder:
+        type: integer
+        format: int64
+        description: >-
+          The total distance the vehicle has driven where the brake pedal has
+          been used without active retarder, in meters.
+        example: 100
+      durationBrakeAndNoRetarder:
+        type: integer
+        format: int64
+        description: >-
+          The total time the vehicle has driven where the brake pedal has been
+          used without active retarder, in seconds.
+        example: 1851167
+      electricEnergyBatterypackHeating:
+        type: number
+        format: double
+        example: 4.03
+        description: >-
+          Total energy consumed in watt hours for heating the battery pack
+          during the lifetime of the vehicle.
+      electricEnergyBatterypackHeatingWheelbasedSpeedOverZero:
+        type: number
+        format: double
+        example: 16.55
+        description: >-
+          Total energy consumed in watt hours for heating the battery pack while
+          the vehicle speed has been over zero during the lifetime of the
+          vehicle.
+      electricEnergyBatterypackHeatingWheelbasedSpeedZero:
+        type: number
+        format: double
+        example: 20.7
+        description: >-
+          Total energy consumed in watt hours for heating the battery pack while
+          the vehicle speed has been equal to zero during the lifetime of the
+          vehicle.
+      electricEnergyPropulsionRoadOverspeed:
+        type: integer
+        format: int64
+        example: 115432
+        description: >-
+          Total energy used by electric motor for propulsion in watt hours when
+          the vehicle speed is above the fleet defined speed limit set by fleet
+          manager.
+  SnapshotDataObject:
+    type: object
+    properties:
+      gnssPosition:
+        $ref: '#/definitions/GNSSPositionObject'
+      wheelBasedSpeed:
+        type: number
+        format: double
+        description: The vehicle wheelbased speed
+        example: 54.3
+      tachographSpeed:
+        type: number
+        format: double
+        description: The Tacho speed
+        example: 54.4
+      engineSpeed:
+        type: number
+        format: double
+        description: The engine speed in rev/min
+        example: 1234
+      fuelLevel1:
+        type: number
+        format: double
+        description: The fuel level percentage
+        example: 86
+      catalystFuelLevel:
+        type: number
+        format: double
+        description: The adblue level percentage
+        example: 43
+      driver1WorkingState:
+        $ref: '#/definitions/DriverWorkingStateProperty'
+      driver2Id:
+        $ref: '#/definitions/DriverIdObject'
+      driver2WorkingState:
+        $ref: '#/definitions/DriverWorkingStateProperty'
+      ambientAirTemperature:
+        type: number
+        format: double
+        description: The Ambient air temperature in Celsius
+        example: 23.7
+      volvoGroupSnapshot:
+        $ref: '#/definitions/VolvoGroupSnapshotObject'
+    required:
+      - gnssPosition
+      - wheelBasedSpeed
+      - fuelLevel1
+  VolvoGroupSnapshotObject:
+    type: object
+    properties:
+      cargo:
+        type: object
+        properties:
+          cargoDefrostOn:
+            type: boolean
+            description: 'Status of defrost, true (on) or false (off)'
+          cargoDoorOpen:
+            type: boolean
+            description: 'Status of cargo door, true(open) or false (close)'
+          cargoTemperatures:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: 'The id of the temperature sensor, e.g. 1-4'
+                  example: 1
+                temperature:
+                  type: integer
+                  description: Temperature in Celsius
+                  example: 3
+                alarmOn:
+                  type: boolean
+                  example: false
+                  description: >-
+                    Status of the temperature alarm, true (alarm on) false
+                    (alarm off)
+      driver1WaitingTimeToday:
+        type: integer
+        description: Waiting time for current driver 1 since midnight
+        example: 45
+      driver1WorkingTimeToday:
+        type: integer
+        description: Working time for current driver 1 since midnight
+        example: 156
+      axleWeights:
+        description: Axle Weights of the truck
+        type: array
+        items:
+          type: object
+          properties:
+            label:
+              type: string
+              enum:
+                - REAR
+                - FRONT
+            value:
+              type: integer
+              description: Axle weight in kg
+        example:
+          - label: FRONT
+            value: 6789
+      trailerAxleWeight:
+        description: Axle Weights of the trailer
+        type: array
+        items:
+          type: object
+          properties:
+            label:
+              type: string
+              enum:
+                - REAR
+                - FRONT
+            value:
+              type: integer
+              description: Axle weight in kg.
+        example:
+          - label: FRONT
+            value: 2345
+      trailerTotalWeight:
+        type: integer
+        description: The total weight of the trailer in kg.
+      estimatedDistanceToEmpty:
+        type: object
+        description: Estimated distance to empty (tanks and/or battery packs) in meters
+        properties:
+          total:
+            type: number
+            format: int64
+            description: >-
+              Estimated distance to empty, summarizing fuel, gas and battery in
+              meters
+            example: 503700
+          fuel:
+            type: number
+            format: int64
+            description: 'Estimated distance to empty, fuel tank, in meters'
+            example: 457600
+          gas:
+            type: number
+            format: int64
+            description: 'Estimated distance to empty, gas tank, in meters'
+            example: 299200
+          batteryPack:
+            type: number
+            format: int64
+            description: 'Estimated distance to empty, battery pack, in meters'
+            example: 150900
+      hybridBatteryPackRemainingCharge:
+        type: number
+        format: double
+        description: >-
+          Indicates the hybrid battery pack remaining charge. 0% means no charge
+          remaining, 100% means full charge remaining. Is used for hybrids as
+          well as for full electrical vehicles.
+        example: 80.2
+      batteryPackChargingConnectionStatus:
+        type: string
+        description: >-
+          Indicates the charging connection status of the battery pack.
+          Connecting - A charger is being connected Connected - A charger is
+          connected Disconnecting - A charger is being disconnected Disconnected
+          - No charger is connected Error - An error occurred when connecting or
+          disconnecting Not available - Charging connection status is not
+          available
+        enum:
+          - CONNECTING
+          - CONNECTED
+          - DISCONNECTING
+          - DISCONNECTED
+          - ERROR
+          - NOT_AVAILABLE
+        example: ERROR
+      batteryPackChargingDevice:
+        type: string
+        description: >-
+          Device used to charge the battery pack. Standard rFMS values taken
+          from ISO 15118 (OEM can have additional values): ACD - Automatic
+          Connection Device WPT - Wireless Power Transfer VEHICLE_COUPLER -
+          manual connection of a flexible cable to an EV NONE - No device
+          connected NOT_AVAILABLE - Unknown
+        example: VEHICLE_COUPLER
+      batteryPackChargingStatus:
+        type: string
+        description: >-
+          Indicates the charging status of the battery pack. Recuperation is
+          excluded. Not charging - No charging Charging - Charging ongoing (AC
+          or DC is unknown) Charging AC - AC charging ongoing Charging DC - DC
+          charging ongoing Error - An error occurred when charging Not available
+          - Charging status is not available
+        enum:
+          - NOT_CHARGING
+          - CHARGING
+          - CHARGING_AC
+          - CHARGING_DC
+          - ERROR
+          - NOT_AVAILABLE
+        example: CHARGING
+      estimatedTimeBatteryPackChargingCompleted:
+        type: string
+        format: date-time
+        description: Estimated time when charging has reached the target level.
+      batteryPackChargeTarget:
+        type: number
+        format: double
+        description: Charge target of the battery pack in percentage.
+        example: 43
+      batteryPackChargingPowerLimitActive:
+        type: string
+        description: >-
+          Charging power limitation is active. Available Values ACTIVE -
+          Charging power limitation is active NOT_ACTIVE - Charging power
+          limitation is not active NOT_AVAILABLE - Charging power limitation is
+          not available
+        example: ACTIVE
+      batteryPackChargingPowerLimit:
+        description: >-
+          Charging power limitation in kilowatt. i.e. The maximum power that
+          will be drawn from the grid to charge the battery pack.
+        type: number
+        format: double
+        example: 11.5
+      batteryVoltage:
+        type: number
+        format: double
+        description: The vehicles low voltage Battery Level in volt.
+        example: 12
+      trailers:
+        type: array
+        description: List of trailers connected to the truck.
+        items:
+          type: object
+          properties:
+            trailerNo:
+              type: integer
+              description: >-
+                Trailer number from 1 to 5, 1 being closest to the truck,
+                according to ISO 11992-2.
+              example: 1
+            trailerIdentificationData:
+              type: string
+              description: >-
+                The identification data sent by the trailer to the truck in the
+                RGE23 message of ISO 11992-2. An alternative source is the DID
+                (Data identifier definition) record VIN, as specified in ISO
+                11992-4. Even though both ISO 11992-2 and ISO 11992-4 specifies
+                this as a VIN, the actual data sent from a trailer is not always
+                the true VIN of the trailer.
+              example: ABC12345678901234
+      parkingClimateStatus:
+        type: string
+        description: >-
+          Indicates the status of the parking climate.  ACTIVE - The parking
+          climate is active. NOT_ACTIVE - The parking climate is not active. 
+          NOT_AVAILABLE - The parking climate is not available.  ERROR - An
+          unforeseen error occurred while reading the status.
+        example: ACTIVE
+      batteryPackChargingPower:
+        type: number
+        description: Charging power in kilowatt.
+        format: double
+        example: 11.5
+      engineOilLevel:
+        type: number
+        description: The engine oil level percentage.
+        format: double
+        example: 73
+      washerFluidLevel:
+        type: string
+        description: >-
+          Reports the current level of the windshield washer fluid.  NORMAL -
+          The washerFluidLevel is normal. LOW - The washerFluidLevel is low. 
+          CRITICAL - The washerFluidLevel is critically low.  ERROR - An
+          unforeseen error occurred while reading the status. NOT_AVAILABLE -
+          The washerFluidLevel is not available.
+        example: NORMAL
+      ptoStatus:
+        type: array
+        items:
+          $ref: '#/definitions/PtoStatusObject'
+        description: >-
+          Power Take-Off (PTO) System Status reports the operational state of
+          vehicle power take-off systems that provide mechanical, electrical, or
+          hydraulic power to auxiliary equipment. AC - Alternating current PTO 
+          DC - Direct current PTO  MECH - Mechanical PTO  GEARBOX - Gearbox PTO
+          Possible PTO states - ACTIVE, INACTIVE, NOT_AVAILABLE, ERROR
+        example:
+          - label: AC
+            status: ACTIVE
+  UptimeDataObject:
+    type: object
+    properties:
+      tellTaleInfo:
+        type: array
+        items:
+          $ref: '#/definitions/TellTaleObject'
+        description: List of tell tales with the actual status for each tell tale.
+      serviceDistance:
+        type: integer
+        format: int64
+        description: The distance in meter to the next service
+        example: 100000
+      engineCoolantTemperature:
+        type: number
+        format: double
+        description: The temperature of the coolant liquid in Celsius
+        example: 90
+      serviceBrakeAirPressureCircuit1:
+        type: integer
+        format: int64
+        description: The air pressure in circuit 1 in Pascal.
+        example: 512000
+      serviceBrakeAirPressureCircuit2:
+        type: integer
+        format: int64
+        description: The air pressure in circuit 2 in Pascal.
+        example: 534000
+      durationAtLeastOneDoorOpen:
+        type: integer
+        format: int64
+        description: >-
+          The total time at least one door has been opened in the bus. (seconds)
+          Used mainly for busses.
+      alternatorInfo:
+        type: object
+        description: >-
+          The alternator status of the up to 4 alternators. Used mainly for
+          busses.
+        properties:
+          alternatorStatus:
+            type: string
+            enum:
+              - NOT_CHARGING
+              - CHARGING
+              - ERROR
+              - NOT_AVAILABLE
+            example: CHARGING
+          alternatorNumber:
+            type: integer
+            format: int64
+            example: 1
+      bellowPressureFrontAxleLeft:
+        type: integer
+        format: int64
+        description: >-
+          The bellow pressure in the front axle left side in Pascal. Used mainly
+          for busses.
+        example: 234000
+      bellowPressureFrontAxleRight:
+        type: integer
+        format: int64
+        description: >-
+          The bellow pressure in the front axle right side in Pascal. Used
+          mainly for busses.
+        example: 234000
+      bellowPressureRearAxleLeft:
+        type: integer
+        format: int64
+        description: >-
+          The bellow pressure in the rear axle left side in Pascal. Used mainly
+          for busses.
+        example: 234000
+      bellowPressureRearAxleRight:
+        type: integer
+        format: int64
+        description: >-
+          The bellow pressure in the rear axle right side in Pascal. Used mainly
+          for busses.
+        example: 234000
+    required:
+      - tellTaleInfo
+  TriggerObject:
+    type: object
+    properties:
+      triggerType:
+        type: string
+        description: >-
+          Trigger types for Context=RFMS: TIMER, DRIVER_LOGIN, DRIVER_LOGOUT,
+          IGNITION_ON, IGNITION_OFF, PTO_ENABLED, PTO_DISABLED, TELL_TALE,
+          DISTANCE_TRAVELLED, ENGINE_ON, ENGINE_OFF,
+          DRIVER_1_WORKING_STATE_CHANGED, DRIVER_2_WORKING_STATE_CHANGED,
+          Trigger types for Context=VOLVO GROUP GEOFENCE, DTJ_ACTIVITY,
+          CARGO_DOOR, CARGO_DEFROST, DRIVING_WITHOUT_BEING_LOGGEDIN, 
+          FUELLEVEL_CHANGED_WHILE_OFF, ADBLUELEVEL_CHANGED_WHILE_OFF,DTM, 
+          STATUS_ON_DEMAND, COLLISION_MITIGATION, FLEET_OVERSPEED,
+          TACHO_OUT_OF_SCOPE_MODE, IDLING, TIRE_WARNING, MOVEMENT,  NO_MOVEMENT,
+          TEMPERATURE_ALARM, ADBLUELEVEL_LOW, WITHOUT_ADBLUE
+          BATTERY_PACK_HIGH_DISCHARGE, BATTERY_PACK_ENERGY_USAGE,
+          BATTERY_PACK_CHARGING_STATUS_CHANGE,
+          BATTERY_PACK_CHARGING_CONNECTION_STATUS_CHANGE,VEHICLE_COUPLER_UNLOCK_ALLOWED,
+          CLIMATE_STATUS,BATTERY_PRECONDITIONING,VEHICLE_MODE
+        example: IGNITION_ON
+      context:
+        type: string
+        description: >-
+          The context defines if this is part of the standard or OEM specific.
+          rFMS standard values VOLVO TRUCKS, SCANIA, DAIMLER, IVECO, DAF, MAN,
+          RENAULT TRUCKS, VDL, VOLVO BUSES If the Trigger is defined in the rFMS
+          standard, the Context = RFMS
+        example: RFMS
+      triggerInfo:
+        type: array
+        description: >-
+          Additional TriggerInfo content for OEM specific triggers E.g.
+          TRAILER_ATTACHED_TRIGGER [id of trailer]
+        items:
+          type: string
+        example:
+          - VIN12345678901234
+      driverId:
+        $ref: '#/definitions/DriverIdObject'
+        description: >-
+          The driver id of driver. (independant whether it is driver or
+          Co-driver) This is only set if the TriggerType = DRIVER_LOGIN,
+          DRIVER_LOGOUT, DRIVER_1_WORKING_STATE_CHANGED or
+          DRIVER_2_WORKING_STATE_CHANGED For DRIVER_LOGIN it is the id of the
+          driver that logged in For DRIVER_LOGOUT it is the id of the driver
+          that logged out For DRIVER_1_WORKING_STATE_CHANGED it is the id of
+          driver 1 For DRIVER_2_WORKING_STATE_CHANGED it is the id of driver 2
+      ptoId:
+        type: string
+        description: >-
+          The id of a PTO. This is only set if the TriggerType = PTO_ENABLED or
+          PTO_DISABLED Volvo Group specific information: For Diesel trucks (ICE)
+          available values are 1-4 and for electrical trucks available values
+          are GEARBOX,MECH,AC and DC.
+      tellTaleInfo:
+        $ref: '#/definitions/TellTaleObject'
+        description: >-
+          The tell tale(s) that triggered this message. This is only set if the
+          TriggerType = TELL_TALE
+      volvoGroupTrigger:
+        $ref: '#/definitions/VolvoGroupTriggerObject'
+    required:
+      - triggerType
+      - context
+  VolvoGroupTriggerObject:
+    type: object
+    properties:
+      chargingStatusInfo:
+        type: object
+        description: >-
+          Additional information can be provided if the trigger type is
+          BATTERY_PACK_CHARGING_STATUS_CHANGE.
+        properties:
+          event:
+            type: string
+            description: >-
+              CHARGING_STARTED - Charging has started CHARGING_COMPLETED -
+              Charging is completed CHARGING_INTERRUPTED - Charging has been
+              interrupted (no error) ERROR - An error occurred when charging
+              ESTIMATED_COMPLETION_TIME_CHANGED - The estimated time for
+              completed charging has changed. (Threshold is outside scope of
+              rFMS) TIMER - A predefined time has passed since last charge
+              status update. (Frequency is outside the scope of rFMS)
+              CHARGING_LEVEL - The charging level has reached a predefined
+              level. (Charging levels are outside the scope of rFMS)
+            enum:
+              - CHARGING_STARTED
+              - CHARGING_COMPLETED
+              - CHARGING_INTERRUPTED
+              - ERROR
+              - ESTIMATED_COMPLETION_TIME_CHANGED
+              - TIMER
+              - CHARGING_LEVEL
+            example: ERROR
+          eventDetail:
+            type: string
+            description: Details regarding the event. Content is OEM specific
+            example: NOT_ALLOWED_TO_CHARGE
+      chargingConnectionStatusInfo:
+        type: object
+        description: >-
+          Additional information can be provided if the trigger type is
+          BATTERY_PACK_CHARGING_CONNECTION_STATUS_CHANGE.
+        properties:
+          event:
+            type: string
+            description: >-
+              CONNECTING - Vehicle is being connected to a charger CONNECTED -
+              Vehicle is connected to a charger DISCONNECTING - Vehicle is being
+              disconnected from the charger DISCONNECTED - Vehicle is not
+              connected to a charger ERROR - An error occurred
+            enum:
+              - CONNECTING
+              - CONNECTED
+              - DISCONNECTING
+              - DISCONNECTED
+              - ERROR
+            example: ERROR
+          eventDetail:
+            type: string
+            description: >-
+              Details regarding the event. Content is OEM specific Volvo Group
+              Possible values CORD_UNLOCK_ALLOWED and CORD_UNLOCK_NOT_ALLOWED.
+            example: CORD_UNLOCK_ALLOWED
+      chargerCordUnlockStatusInfo:
+        type: string
+        description: >-
+          Additional information can be provided if the trigger type is
+          VEHICLE_COUPLER_UNLOCK_ALLOWED. ALLOWED - The vehicle is connected to
+          a charger, and unlocking the charge cord is allowed. NOT_ALLOWED - The
+          vehicle is connected to a charger, and unlocking the charge cord is
+          not allowed.
+        example: ALLOWED
+      climateStatusInfo:
+        type: string
+        description: >-
+          Additional information related to trigger type CLIMATE_STATUS.
+          CLIMATE_ACTIVATED - climatization in vehicle has been activated.
+          CLIMATE_DEACTIVATED - climatization in vehicle has been deactivated.
+          CLIMATE_FAILED_ON_LOW_FUEL - climatization in vehicle failed due to
+          low fuel.
+        example: CLIMATE_ACTIVATED
+      vehicleModeStatusInfo:
+        type: string
+        description: >-
+          Additional information related to trigger type VEHICLE_MODE. HIBERNATE
+          - The vehicle is in a low-power state with most systems shut down to
+          conserve energy. PARKED - The vehicle is stationary with the engine
+          off and systems in standby mode. LIVING - The vehicle is in a mode
+          that supports driver or passenger comfort features (e.g., cabin
+          power). ACCESSORY - The vehicle's accessory systems are powered on,
+          such as radio or lights, without engine operation. PRE_RUNNING - The
+          vehicle is preparing to start, with initial systems powering up before
+          engine ignition. CRANKING - The engine is in the process of starting
+          mode. RUNNING - The vehicle's engine is running and the vehicle is
+          ready for operation or in motion.
+        example: CRANKING
+  DriverIdObject:
+    type: object
+    properties:
+      tachoDriverIdentification:
+        type: object
+        properties:
+          driverIdentification:
+            type: string
+            description: >-
+              The unique identification of a driver in a Member State. This
+              fields is formatted according the definition for
+              driverIdentification in COMMISSION REGULATION (EC) No 1360/2002
+              Annex 1b
+            example: 12345678901234
+          cardIssuingMemberState:
+            type: string
+            description: >-
+              The country alpha code of the Member State having issued the card.
+              This fields is formatted according the definition for NationAlpha
+              in COMMISSION REGULATION (EC) No 1360/2002 Annex 1b
+            example: S
+          driverAuthenticationEquipment:
+            type: string
+            description: >-
+              Code to distinguish different types of equipment for the
+              tachograph application. See description of the field
+              'DriverAuthenticationEquipment' in COMMISSION REGULATION (EC) No
+              1360/2002 Annex 1b
+            example: DRIVER_CARD
+            enum:
+              - RESERVED
+              - DRIVER_CARD
+              - CONTROL_CARD
+              - COMPANY_CARD
+              - MANUFACTURING_CARD
+              - VEHICLE_UNIT
+              - MOTION_SENSOR
+          cardReplacementIndex:
+            type: string
+            description: >-
+              A card replacement index. This fields is formatted according the
+              definition for CardReplacementIndex (chap 2.26) in: COMMISSION
+              REGULATION (EC) No 1360/2002 Annex 1b
+            example: 0
+          cardRenewalIndex:
+            type: string
+            description: >-
+              A card renewal index. This fields is formatted according the
+              definition for CardRenewalIndex (chap 2.25) in: COMMISSION
+              REGULATION (EC) No 1360/2002 Annex 1b
+            example: 0
+      oemDriverIdentification:
+        type: object
+        properties:
+          idType:
+            type: string
+            description: 'Contains an optional id type (e.g. pin, USB, encrypted EU id…)'
+            example: USB
+          oemDriverIdentification:
+            type: string
+            description: An OEM specific driver id.
+            example: ABC-123-DEF
+  TellTaleObject:
+    type: object
+    properties:
+      tellTale:
+        type: string
+        example: FUEL_LEVEL
+        enum:
+          - COOLING_AIR_CONDITIONING
+          - HIGH_BEAM_MAIN_BEAM
+          - LOW_BEAM_DIPPED_BEAM
+          - TURN_SIGNALS
+          - HAZARD_WARNING
+          - PROVISIONING_HANDICAPPED_PERSON
+          - PARKING_BRAKE
+          - BRAKE_MALFUNCTION
+          - HATCH_OPEN
+          - FUEL_LEVEL
+          - ENGINE_COOLANT_TEMPERATURE
+          - BATTERY_CHARGING_CONDITION
+          - ENGINE_OIL
+          - POSITION_LIGHTS
+          - FRONT_FOG_LIGHT
+          - REAR_FOG_LIGHT
+          - PARKING_HEATER
+          - ENGINE_MIL_INDICATOR
+          - SERVICE_CALL_FOR_MAINTENANCE
+          - TRANSMISSION_FLUID_TEMPERATURE
+          - TRANSMISSION_MALFUNCTION
+          - ANTI_LOCK_BRAKE_FAILURE
+          - WORN_BRAKE_LININGS
+          - WINDSCREEN_WASHER_FLUID
+          - TIRE_MALFUNCTION
+          - GENERAL_FAILURE
+          - ENGINE_OIL_TEMPERATURE
+          - ENGINE_OIL_LEVEL
+          - ENGINE_COOLANT_LEVEL
+          - STEERING_FLUID_LEVEL
+          - STEERING_FAILURE
+          - HEIGHT_CONTROL
+          - RETARDER
+          - ENGINE_EMISSION_FAILURE
+          - ESC_INDICATOR
+          - BRAKE_LIGHTS
+          - ARTICULATION
+          - STOP_REQUEST
+          - PRAM_REQUEST
+          - BUS_STOP_BRAKE
+          - ADBLUE_LEVEL
+          - RAISING
+          - LOWERING
+          - KNEELING
+          - ENGINE_COMPARTMENT_TEMPERATURE
+          - AUXILLARY_AIR_PRESSURE
+          - AIR_FILTER_CLOGGED
+          - FUEL_FILTER_DIFF_PRESSURE
+          - SEAT_BELT
+          - EBS
+          - LANE_DEPARTURE_INDICATOR
+          - ADVANCED_EMERGENCY_BREAKING
+          - ACC
+          - TRAILER_CONNECTED
+          - ABS_TRAILER
+          - AIRBAG
+          - EBS_TRAILER_1_2
+          - TACHOGRAPH_INDICATOR
+          - ESC_SWITCHED_OFF
+          - LANE_DEPARTURE_WARNING_SWITCHED_OFF
+          - OEM_SPECIFIC_TELL_TALE
+      oemTellTale:
+        type: string
+        description: >-
+          The OemTellTale is only set when the TellTale ==
+          OEM_SPECIFIC_TELL_TALE. This is an OEM specific string defining a tell
+          tale in the OEM context.
+        example: NO_GPS_SIGNAL
+      state:
+        type: string
+        description: The current state of the tell tale.
+        example: YELLOW
+        enum:
+          - RED
+          - YELLOW
+          - INFO
+          - 'OFF'
+          - RESERVED_4
+          - RESERVED_5
+          - RESERVED_6
+          - NOT_AVAILABLE
+    required:
+      - tellTale
+      - state
+  GNSSPositionObject:
+    type: object
+    properties:
+      latitude:
+        type: number
+        format: double
+        description: Latitude (WGS84 based)
+        example: 57.71727
+      longitude:
+        type: number
+        format: double
+        description: Longitude (WGS84 based)
+        example: 11.921161
+      heading:
+        type: integer
+        description: The direction of the vehicle (0-359)
+        example: 30
+      altitude:
+        type: integer
+        description: >-
+          The altitude of the vehicle. Where 0 is sealevel, negative values
+          below sealevel and positive above sealevel. Unit in meters.
+        example: 32
+      speed:
+        type: number
+        format: double
+        description: The GNSS(e.g. GPS)-speed in km/h
+        example: 54.5
+      positionDateTime:
+        type: string
+        format: date-time
+        description: The time of the position data in iso8601 format.
+    required:
+      - latitude
+      - longitude
+      - positionDateTime
+  LabelObject:
+    type: object
+    properties:
+      label:
+        type: string
+      seconds:
+        type: integer
+        format: int64
+      meters:
+        type: integer
+        format: int64
+      milliLitres:
+        type: integer
+        format: int64
+  VolvoGroupLabelObject:
+    type: object
+    properties:
+      label:
+        type: string
+      seconds:
+        type: integer
+        format: int64
+      meters:
+        type: integer
+        format: int64
+      milliLitres:
+        type: integer
+        format: int64
+      watthours:
+        type: integer
+        format: int64
+      kilograms:
+        type: number
+        format: double
+      counter:
+        type: integer
+        format: int64
+  FromToClassObject:
+    type: object
+    properties:
+      from:
+        type: number
+        format: double
+      to:
+        type: number
+        format: double
+      seconds:
+        type: integer
+        format: int64
+      meters:
+        type: integer
+        format: int64
+      milliLitres:
+        type: integer
+        format: int64
+  VinProperty:
+    type: string
+    description: vehicle identification number. See ISO 3779 (17 characters)
+    example: ABC12345678901234
+  CreatedDateTimeProperty:
+    type: string
+    format: date-time
+    description: When the data was retrieved in the vehicle in iso8601 format.
+  ReceivedDateTimeProperty:
+    type: string
+    format: date-time
+    description: >-
+      Reception at Server. To be used for handling of “more data available” in
+      iso8601 format.
+  DriverWorkingStateProperty:
+    type: string
+    description: Tachograph Working state of the driver
+    enum:
+      - REST
+      - DRIVER_AVAILABLE
+      - WORK
+      - DRIVE
+      - ERROR
+      - NOT_AVAILABLE
+    example: DRIVE
+  PtoStatusObject:
+    type: object
+    properties:
+      label:
+        type: string
+      status:
+        type: string

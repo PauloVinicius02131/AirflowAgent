@@ -1,0 +1,1208 @@
+swagger: '2.0'
+info:
+  description: Volvo Group Vehicle Alerts API
+  version: 1.1.6
+  title: Volvo Group Vehicle Alerts APIs
+host: api.volvotrucks.com
+basePath: /alert
+securityDefinitions:
+  basicAuth:
+    type: basic
+security:
+  - basicAuth: []
+schemes:
+  - https
+parameters:
+  requestId:
+    name: requestId
+    in: query
+    description: >-
+      A client unique request id used for fault tracing at the API supplier.
+      This shall be unique for each request if used.
+    required: false
+    type: string
+    x-example: 173d9deb-f3dd-48e6-93f3-905144bc4f4e
+  datetype:
+    name: datetype
+    in: query
+    description: >-
+      The start/stop times are compared to the created or received time of the
+      event.  If this isn't supplied all times are received times.
+    default: received
+    required: false
+    type: string
+    enum:
+      - created
+      - received
+  starttime:
+    name: starttime
+    in: query
+    description: >-
+      Only the data created/received after this time should be returned. (i.e.
+      >= starttime)
+    required: false
+    type: string
+    format: date-time
+  stoptime:
+    name: stoptime
+    in: query
+    description: >-
+      Only the data created/received before this time should be returned. (i.e.
+      < stoptime)
+    required: false
+    type: string
+    format: date-time
+  vin:
+    name: vin
+    in: query
+    description: Only the data created by the vehicle with this VIN should be returned
+    required: false
+    type: array
+    collectionFormat: csv
+    items:
+      type: string
+    x-example:
+      - ABC12345678901234
+  lastVin:
+    name: lastVin
+    in: query
+    description: >-
+      The response will return the next block of vehicles not including the one
+      with the given VIN. When the last call to the vehicle list function had
+      MoreDataAvailable-parameter set to true you must supply the VIN of the
+      last item in the list as lastVin parameter in the next call.
+    required: false
+    type: string
+    x-example: ABC12345678901234
+paths:
+  /vehiclealerts:
+    get:
+      tags:
+        - Alerts
+      summary: List of vehicle alerts sorted with the latest alert first.
+      description: >-
+        Returns a list of vehicle alerts sorted with the newest alerts first.
+        The vehicle alerts include different amounts of data so do not count on
+        all fields being populated for all events in the response.
+      produces:
+        - application/x.volvogroup.com.vehiclealerts.v1.1+json; UTF-8
+      parameters:
+        - $ref: '#/parameters/requestId'
+        - $ref: '#/parameters/datetype'
+        - $ref: '#/parameters/starttime'
+        - $ref: '#/parameters/stoptime'
+        - $ref: '#/parameters/vin'
+        - name: contentFilter
+          in: query
+          description: >-
+            By adding a contentFilter to the request it's possible to restrict
+            the resultset. If no contentFilter parameter is supplied the
+            response contains all available alerts. Ex: If IDLING is provided in
+            the content filter and in the severityFilter LOW, the response will
+            contain all IDLING alerts with severity LOW.
+          required: false
+          type: array
+          collectionFormat: csv
+          items:
+            type: string
+            enum:
+              - ASSISTANCE
+              - EMERGENCY
+              - TELL_TALE
+              - ADBLUELEVEL_LOW
+              - WITHOUT_ADBLUE
+              - DRIVING_WITHOUT_BEING_LOGGED_IN
+              - TACHO_OUT_OF_SCOPE_MODE_CHANGE
+              - GEOFENCE
+              - SAFETY_ZONE
+              - OVERSPEED
+              - IDLING
+              - FUEL
+              - CATALYST
+              - PTO
+              - CARGO
+              - TPM
+              - TTM
+              - DAS
+              - ESP
+              - AEBS
+              - HARSH
+              - LKS
+              - LCS
+              - DISTANCE_ALERT
+              - UNSAFE_LANE_CHANGE
+              - BATTERY_PACK_CHARGING_STATUS_CHANGE
+              - BATTERY_PACK_HIGH_DISCHARGE
+              - BATTERY_PACK_ENERGY_USAGE
+              - BATTERY_PACK_CHARGING_CONNECTION_STATUS_CHANGE
+              - ALARM
+        - name: severityFilter
+          in: query
+          description: >-
+            By adding a severityFilter to the request it's possible to restrict
+            the resultset.  If no severityFilter parameter is supplied the
+            response contains alerts with all severities . Ex: If severityFilter
+            is set to LOW and no contentFilter is set, the response will contain
+            all alerts with severity LOW. Ex: if severityFilter is set to LOW
+            and no contentFilter is set to IDLING, the response will contain
+            IDLING alerts with severity LOW.
+          required: false
+          type: array
+          collectionFormat: csv
+          items:
+            type: string
+            enum:
+              - HIGH
+              - MEDIUM
+              - LOW
+        - name: latestOnly
+          in: query
+          description: >-
+            If this value is set to true only the last latest vehicle alert,
+            matching the contentFilter (if used), is returned for each vehicle
+            in the response. If this value is set to false (or not present) all
+            vehicle alerts matching the starttime/stoptime criteria is returned
+            for each vehicle in the response.
+          default: false
+          required: false
+          type: boolean
+        - $ref: '#/parameters/lastVin'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/AlertsResponseObject'
+        '400':
+          $ref: '#/responses/BadRequest'
+        '401':
+          $ref: '#/responses/Unauthorized'
+        '403':
+          $ref: '#/responses/Forbidden'
+        '404':
+          $ref: '#/responses/NotFound'
+        '406':
+          $ref: '#/responses/NotAcceptable'
+        '429':
+          $ref: '#/responses/TooManyRequests'
+definitions:
+  AlertsResponseObject:
+    type: object
+    properties:
+      alertsResponse:
+        type: object
+        properties:
+          alerts:
+            type: array
+            items:
+              $ref: '#/definitions/AlertsObject'
+          moreDataAvailable:
+            type: boolean
+            description: >-
+              This will be set to true if the result set was too large to be
+              sent back in one reply. A new request must be sent to get the rest
+              of the recordset, where the lastVin parameter must be supplied.
+              The lastVin should be set to the VIN of the last vehicle in the
+              result set of this message.
+          moreDataAvailableLink:
+            type: string
+            description: >-
+              Populated with the link to the next part of the result when
+              moreDataAvailable is true. The link is relative, i.e. starts with
+              /alert/vehiclealerts, and preserves any query parameters from the
+              original request.
+            example: >-
+              /alert/vehiclealerts?starttime=2019-04-04T16:42:49Z&latestOnly=true
+          requestServerDateTime:
+            type: string
+            format: date-time
+            description: >-
+              Time in UTC to be used to ask for historical data (for starttime),
+              to solve the problem of having different times at server and
+              clients. This is the time at the server when this request was
+              received. To avoid loosing any messages or get duplicates, this is
+              the time that should be supplied in the starttime parameter in the
+              next request.
+        required:
+          - alerts
+          - moreDataAvailable
+          - requestServerDateTime
+    required:
+      - alertsResponse
+  AlertsObject:
+    type: object
+    properties:
+      alertType:
+        type: string
+        description: |
+          Available categories.
+           GENERIC                                         - In the GENERIC category we have included (ASSISTANCE, EMERGENCY, TELL_TALE, ADBLUELEVEL_LOW, WITHOUT_ADBLUE, DRIVING_WITHOUT_BEING_LOGGED_IN, UNKNOWN)
+           TACHO_OUT_OF_SCOPE_MODE_CHANGE                  - When tachograph 'out of scope mode' has changed an event is triggered. 
+           GEOFENCE                                        - If a vehicle is leaving or arriving a geofence an event is triggered. 
+           SAFETY_ZONE                                     - If the vehicle enters or leaves the safety zone, and if the driver violates the maximum speed in the safety zone, a corresponding safety zone event is triggered.
+           OVERSPEED                                       - Vehicles speed exceeded the overspeed threshold and an event is triggered. 
+           IDLING                                          - The Vehicle has been idling for more time then defined in the trigger or stopped idling. 
+           FUEL                                            - The fuel level changed while the while the vehicle was standing still. 
+           CATALYST                                        - AdBlue level has changed while the vehicle was standing still. 
+           PTO                                             - If PTO is engaged or disengaged an event is triggered containing information. 
+           CARGO                                           - DEFROST_STATUS_CHANGE changed from Defrost on/off or off/on an event is triggered. 
+           TPM                                             - If a TPM(Tire Pressure Monitoring Service) event is triggered when something has happened with the pressure of tires of the truck and/or trailer. 
+           TTM                                             - If a TTM(Tire Temperature Monitoring Service) event is triggered when something has happened with the temperature of tires of the truck and/or trailer. 
+           DAS                                             - The Driver Alert Support(DAS) system status is changed or an erratic driving behaviour is detected in the Vehicle an event is triggered containing information. 
+           ESP                                             - The Electronic Stability Control (ESC/ESP) is engaged in the Vehicle an event is triggered containing information. 
+           AEBS                                            - The Forward Collision Warning & Emergency Brake (FCW,AEBS) system status is changed or is engaged in the Vehicle an event is triggered containing information. 
+           HARSH                                           - The vehicle speed is rapidly increased or reduced an event is triggered containing information. 
+           LKS                                             - The Lane Keeping Support (LKS) system status is changed in the Vehicle an event is triggered containing information. 
+           LCS                                             - The Lane Change Support (LCS) system status is enabled or disabled in the vehicle.
+           DISTANCE_ALERT                                  - The Distance alert system is enabled or disabled in the vehicle, or driver drives to close to the vehicle ahead
+           UNSAFE_LANE_CHANGE                              - Driver attempted a lane change with obstacles in the blind spot area. The Unsafe lane change event is derived from LCS and LKS. 
+           BATTERY_PACK_CHARGING_STATUS_CHANGE             - Data was sent due to a change in the battery pack charging status.
+           BATTERY_PACK_HIGH_DISCHARGE                     - Data was sent due to high discharge in the battery pack.
+           BATTERY_PACK_ENERGY_USAGE                       - Data was sent due to reaching a pre-defined state of charge level.
+           BATTERY_PACK_CHARGING_CONNECTION_STATUS_CHANGE  - Data was sent due to a change in the battery pack charging connection status.
+           ALARM                                           - The vehicle has triggered an alarm.
+        example: GENERIC
+      severity:
+        type: string
+        enum:
+          - HIGH
+          - MEDIUM
+          - LOW
+      createdDateTime:
+        $ref: '#/definitions/CreatedDateTimeProperty'
+      receivedDateTime:
+        $ref: '#/definitions/ReceivedDateTimeProperty'
+      driverId:
+        $ref: '#/definitions/DriverIdObject'
+      vin:
+        $ref: '#/definitions/VinProperty'
+      gnssPosition:
+        $ref: '#/definitions/GNSSPositionObject'
+      customerVehicleName:
+        type: string
+        description: Name of the Vehicle
+      hrTotalVehicleDistance:
+        type: integer
+        format: int64
+        description: >-
+          Accumulated distance travelled by the vehicle during its operation in
+          meter
+        example: 34567891
+      totalEngineHours:
+        type: number
+        format: double
+        description: >-
+          The total hours of operation for the vehicle combustion engine. At
+          least one of totalEngineHours or totalElectricMotorHours is Mandatory
+          If hybrid vehicle, totalEngineHours contains the sum of hours of
+          operation of the vehicle combustion engine and total hours the
+          electric motor is ready for propulsion (i.e. crank mode).
+        example: 1234.3
+      totalElectricMotorHours:
+        type: number
+        format: double
+        description: >-
+          The total hours the electric motor is ready for propulsion (i.e. crank
+          mode). At least one of totalEngineHours or totalElectricMotorHours is
+          mandatory
+        example: 127.2
+      generic:
+        type: object
+        properties:
+          triggerType:
+            type: string
+            description: >-
+              The alerts are grouped as Generic or own type. The GENERIC alerts
+              has no specific additional data. The alerts that are not GENERIC
+              contains additional information. ASSISTANCE                      -
+              Assistance
+               EMERGENCY                       - Emergency
+               TELL_TALE                       - Warning lamps
+               ADBLUELEVEL_LOW                 - Vehicle has low level of AdBlue
+               WITHOUT_ADBLUE                  - Vehicle has no AdBlue
+               DRIVING_WITHOUT_BEING_LOGGED_IN - Vehicle has been driven without any driver logged in
+               UNKNOWN                         - Unknown alert,
+               The non-generic categories contains more information therefore the reason to have own specific information sections.
+        required:
+          - triggerType
+      tachoOutOfMode:
+        type: object
+        description: When tachograph "out of scope mode" has changed an event is triggered.
+        properties:
+          eventType:
+            type: string
+            description: |
+              Marks if it has started or ended the out of mode scope. 
+               Possible values: STARTED, ENDED
+            example: STARTED
+        required:
+          - eventType
+      geofence:
+        type: object
+        description: If a vehicle is leaving or arriving a geofence an event is triggered.
+        properties:
+          name:
+            type: string
+            description: User defined name of the geofence
+          message:
+            type: string
+            description: >-
+              User defined message displayed when the geofence is triggered,
+              dependent on the eventType(Leaving or arriving)
+          eventType:
+            type: string
+            description: |
+              The type of the event bound.
+               Possible values: LEAVING, ARRIVING
+            example: LEAVING
+        required:
+          - eventType
+          - name
+      safetyZone:
+        type: object
+        description: >-
+          If the vehicle enters or leaves the safety zone, and if the driver
+          violates the maximum speed in the safety zone, a corresponding safety
+          zone event is triggered.
+        properties:
+          name:
+            type: string
+            description: User defined name of the Safety zone
+            example: SCHOOL_ZONE
+          eventType:
+            type: string
+            description: |
+              The type of the event bound.
+               Possible values: LEAVING, ARRIVING, VIOLATION_STARTED, VIOLATION_ENDED 
+            example: VIOLATION_STARTED
+          topSpeed:
+            type: number
+            format: double
+            description: >
+              The top speed at which the vehicle has been driven in the zone in
+              km/h.
+            example: 90
+          overspeedingReason:
+            type: string
+            description: |
+              Reason for triggering the zone deviation event.
+               Possible values: KICKDOWN_VIOLATION, REDUCING_TO_LIMIT_AT_ENTRY, FREE_ROLLING, OTHER_VIOLATION 
+            example: KICKDOWN_VIOLATION
+          duration:
+            type: number
+            format: integer
+            description: |
+              Duration in seconds for how long the violation was active. 
+        required:
+          - name
+          - eventType
+      overspeed:
+        type: object
+        description: >-
+          Vehicles speed exceeded the overspeed threshold and an event is
+          triggered.
+        properties:
+          triggerType:
+            type: string
+            description: ' Possible values: OVERSPEED'
+            example: OVERSPEED
+          eventType:
+            type: string
+            description: |
+              Defines if the overspeed has started or ended.
+               Possible values: STARTED, ENDED
+            example: STARTED
+          wheelBasedSpeed:
+            type: number
+            format: double
+            description: >-
+              Wheel-Based Vehicle Speed in km/h (Speed of the vehicle as
+              calculated from wheel or tailshaft speed)
+          overspeedLimit:
+            type: number
+            format: double
+            description: The overspeed limit that has been configured for the vehicle.
+        required:
+          - triggerType
+          - eventType
+          - wheelBasedSpeed
+      idling:
+        type: object
+        description: >-
+          The Vehicle has been idling for more time then defined in the trigger
+          or stopped idling.
+        properties:
+          eventType:
+            type: string
+            description: |
+              Marks if the IDLING has started or ended.
+               Possible values: STARTED, ENDED
+            example: STARTED
+          ambientAirTemperature:
+            type: number
+            format: double
+            description: Returns the tempearture in Celsius
+          airProductionModulatorState:
+            type: string
+            description: |
+              Indicates the current status of the Air Production modular unit.
+               Possible values: LOAD_STATE, REGENERATION_STATE, LOCKED_STATE, IDLE_STATE
+            example: LOAD_STATE
+          coolantTemperature:
+            type: number
+            format: double
+            description: Returns the temperature in Celsius
+          regenerationFilterState:
+            type: string
+            description: |
+              Indicates the current staus of the filter.
+               Possible values: REGENERATION_NOT_NEEDED, REGENERATION_NEEDED_LOWEST_LEVEL, REGENERATION_NEEDED_MODERATE_LEVEL, REGENERATION_NEEDED_HIGHEST_LEVEL
+            example: REGENERATION_NOT_NEEDED
+        required:
+          - eventType
+          - ambientAirTemperature
+          - airProductionModulatorState
+      fuelLevel:
+        type: object
+        description: The fuel level changed while the vehicle was standing still.
+        properties:
+          fuelLevel1:
+            type: number
+            format: double
+            description: The fuel level in percentage relative to the full tank.
+            example: 86
+          fuelLevel1ChangePercent:
+            type: number
+            format: double
+            description: The change in fuellevel in percent
+        required:
+          - fuelLevel1
+          - fuelLevel1ChangePercent
+      catalystFuelLevel:
+        type: object
+        description: AdBlue level has changed while the vehicle was standing still.
+        properties:
+          catalystFuelLevel:
+            type: number
+            format: double
+            description: The adblue level percentage relative to full tank.
+          catalystFuelLevelChangePercent:
+            type: number
+            format: double
+            description: The adblue level change in percentage.
+        required:
+          - catalystFuelLevel
+          - catalystFuelLevelChangePercent
+      pto:
+        type: object
+        description: >-
+          If PTO is engaged or disengaged an event is triggered containing
+          information.
+        properties:
+          id:
+            type: string
+            description: |
+              Description of which PTO unit that has triggered the event.
+               Possible values can be PTO1, PTO2, PTO3 OR PTO4.
+               Possible values for Electrical vehicles can be AC, DC, MECHANICAL, GEAR_BOX.
+            example: PTO1
+          eventType:
+            type: string
+            description: |
+              PTO eventType that has triggered the event.
+               Possible values: ENGAGED, DISENGAGED
+            example: ENGAGED
+          batteryLevel:
+            type: number
+            format: double
+          ambientAirTemperature:
+            type: number
+            format: double
+          airProductionModulatorState:
+            type: string
+            description: >
+              Possible values: LOAD_STATE, REGENERATION_STATE, LOCKED_STATE,
+              IDLE_STATE
+            example: LOAD_STATE
+          coolantTemperature:
+            type: number
+            format: double
+            description: Returns the tempearture in Celsius
+          regenerationFilterState:
+            type: string
+            description: >
+              Possible values: REGENERATION_NOT_NEEDED,
+              REGENERATION_NEEDED_LOWEST_LEVEL,
+              REGENERATION_NEEDED_MODERATE_LEVEL,
+              REGENERATION_NEEDED_HIGHEST_LEVEL
+            example: REGENERATION_NOT_NEEDED
+        required:
+          - id
+          - eventType
+          - ambientAirTemperature
+          - airProductionModulatorState
+      cargo:
+        type: object
+        description: >-
+          DEFROST_STATUS_CHANGE changed from Defrost on/off or off/on an event
+          is triggered. If the DOORSTATUS_CHANGE changed from open/closed or
+          closed/open an event is triggered with information related to the
+          event. A TEMPERATURE_ALARM is triggered if the temperature is lower or
+          higher then predefined value (NEEDS confirmation)
+        properties:
+          triggerType:
+            type: string
+            description: >
+              Possible values: DEFROST_STATUS_CHANGE, DOORSTATUS_CHANGE,
+              TEMPERATURE_ALARM
+            example: DEFROST_STATUS_CHANGE
+          cargoDefrostOn:
+            type: boolean
+            description: 'Status of defrost, true or false'
+          cargoDoorOpen:
+            type: boolean
+            description: 'Status of door, true(open) or false (close)'
+          cargoTemperatures:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: 'The id of the temperature sensor, e.g. 1-4'
+                  example: 1
+                temperature:
+                  type: integer
+                  description: Temperature in Celsius
+                  example: 3
+                alarmOn:
+                  type: boolean
+                  example: false
+              required:
+                - id
+                - temperature
+                - alarmOn
+        required:
+          - triggerType
+      tpm:
+        type: object
+        description: >-
+          If a TPM(Tire Pressure Monitoring Service) event is triggered when
+          something has happened with the pressure of tires of the truck and/or
+          trailer.
+        properties:
+          source:
+            type: string
+            description: >
+              Possible values: TRUCK, TRAILER1, TRAILER2, TRAILER3, TRAILER4,
+              TRAILER5
+            example: TRUCK
+          axleId:
+            type: integer
+            description: >-
+              Integer, values range from 1-15. The axel id is calculated from a
+              persistent tire id. See ISO 11992-2:2003
+          tireLocation:
+            type: string
+            description: |
+              Indicates which tire(s) that has triggered the event.
+               Possible values: LEFT_INNER, LEFT_OUTER, CENTER, RIGHT_INNER, RIGHT_OUTER, UNDEFINED
+            example: LEFT_INNER
+          tpmActive:
+            type: boolean
+            description: 'True if tire is paired and positioned, i.e. TPM is active'
+          batteryStatus:
+            type: string
+            example: BATTERY_OK
+            description: >
+              Indicated the batterystatus of the sensor in the tire that has
+              triggered the event.
+               Possible values: BATTERY_OK, BATTERY_LOW, BATTERY_VERY_LOW
+          eventType:
+            type: string
+            description: >
+              Information of what kind of issue that has occured with the
+              tire(s).
+               Possible values: PRESSURE_WARNING_STATUS_CHANGED, LEAKAGE_WARNING_STATUS_CHANGED, BOTH
+            example: PRESSURE_WARNING_STATUS_CHANGED
+          informationEvent:
+            type: boolean
+            description: >-
+              True if eventType is PRESSURE_WARNING_STATUS_CHANGED and pressure
+              warning is NO_WARNING True if eventType is
+              LEAKAGE_WARNING_STATUS_CHANGED and leakage warning is  NO_LEAKAGE
+              True if eventType is BOTH and leakage warning is NO_LEAKAGE and
+              pressure warning is NO_WARNING otherwise false
+          leakageWarning:
+            type: string
+            description: >
+              Information of what kind of leakage the tire(s) have at the moment
+              the event has been triggered.
+               Possible values: NO_LEAKAGE, SLOW_LEAKAGE, FAST_LEAKAGE, NOT_AVAILABLE
+            example: NO_LEAKAGE
+          temperature:
+            type: number
+            format: double
+            description: The temperature of the tire in Celsius
+            example: 23.5
+          temperatureStatus:
+            type: string
+            description: >
+              The temperatureStatus parameter returns the tire's current thermal
+              condition, as reported by embedded sensors. 
+               The possible enumerated values are:
+               NO_WARNING - Temperature is within the normal operating range.
+               HIGH_TEMP_WARNING - The tire temperature is critically high.
+               NOT_AVAILABLE - The sensor data is unavailable.
+               ERROR - An invalid or faulty reading was received.
+            example: HIGH_TEMP_WARNING
+          pressure:
+            type: object
+            properties:
+              actual:
+                type: number
+                format: double
+                description: Pressure of the tire(s) In kPa
+              reference:
+                type: number
+                format: double
+                description: The reference pressure value of the tire(s) In kPa
+              warning:
+                type: string
+                description: >
+                  Possible values: EXTREME_OVER_PRESSURE, OVER_PRESSURE,
+                  NO_WARNING, UNDER_PRESSURE, EXTREME_UNDER_PRESSURE,
+                  NOT_AVAILABLE
+                example: EXTREME_OVER_PRESSURE
+        required:
+          - source
+          - axleId
+          - tireLocation
+          - eventType
+      ttm:
+        type: object
+        description: >-
+          If a TTM(Tire Temperature Monitoring Service) event is triggered when
+          something has happened with the temperature of tires of the truck
+          and/or trailer.
+        properties:
+          source:
+            type: string
+            description: >
+              Possible values: TRUCK, TRAILER1, TRAILER2, TRAILER3, TRAILER4,
+              TRAILER5
+            example: TRUCK
+          axleId:
+            type: integer
+            description: >-
+              Integer, values range from 1-15. The axel id is calculated from a
+              persistent tire id. See ISO 11992-2:2003
+          tireLocation:
+            type: string
+            description: |
+              Indicates which tire(s) that has triggered the event.
+               Possible values: LEFT_INNER, LEFT_OUTER, CENTER, RIGHT_INNER, RIGHT_OUTER, UNDEFINED
+            example: LEFT_INNER
+          tireActive:
+            type: boolean
+            description: 'True if tire is paired and positioned, i.e. TTM is active'
+          batteryStatus:
+            type: string
+            example: BATTERY_OK
+            description: >
+              Indicated the batterystatus of the sensor in the tire that has
+              triggered the event.
+               Possible values: BATTERY_OK, BATTERY_LOW, BATTERY_VERY_LOW
+          eventType:
+            type: string
+            description: >
+              Information of what kind of issue that has occurred with the
+              tire(s).
+               Possible values: TEMPERATURE_WARNING_STATUS_CHANGED
+            example: TEMPERATURE_WARNING_STATUS_CHANGED
+          informationEvent:
+            type: boolean
+            description: >-
+              True if eventType is TEMPERATURE_WARNING_STATUS_CHANGED and
+              temperature warning is NO_WARNING otherwise false
+          temperature:
+            type: object
+            properties:
+              actual:
+                type: number
+                format: double
+                description: Temperature of the tire(s) in Celsius
+              warning:
+                type: string
+                description: >
+                  Possible values: NO_WARNING, HIGH_TEMP_WARNING, ERROR,
+                  NOT_AVAILABLE
+                example: HIGH_TEMP_WARNING
+        required:
+          - source
+          - axleId
+          - tireLocation
+          - eventType
+      das:
+        type: object
+        description: >-
+          The Driver Alert Support(DAS) system status is changed or an erratic
+          driving behaviour is detected in the Vehicle an event is triggered
+          containing information.
+        properties:
+          eventType:
+            type: string
+            description: |2
+               ENABLED       - If the Driver Alert Support (DAS) system status is enabled that has triggered the event
+               DISABLED      - If the Driver Alert Support (DAS) system status is disabled that has triggered the event
+               MAJOR_ENGAGED - If the Driver Alert Support (DAS) system is detected an erratic driving behaviour that has triggered the event
+            example: ENABLED
+          actorType:
+            type: string
+            description: >
+              The Driver Alert Support (DAS) status change actorType that was
+              ENABLED or DISABLED by.
+               Possible values: DRIVER, VEHICLE
+            example: DRIVER
+        required:
+          - eventType
+      esp:
+        type: object
+        description: >-
+          The Electronic Stability Control (ESC/ESP) is engaged in the Vehicle
+          an event is triggered containing information.
+        properties:
+          eventType:
+            type: string
+            description: |2
+                TRAILER - If the Electronic Stability Control (ESC) is engaged on the trailer that has triggered the event
+               VEHICLE - If the Electronic Stability Control (ESC) is engaged on the vehicle that has triggered the event
+               ROP     - If the Electronic Stability Control (ESC) engaged the Roll Over Protection (ROP) that has triggered the event
+               NONE    - If the Electronic Stability Control (ESC) is engaged that has triggered the event
+            example: TRAILER
+        required:
+          - eventType
+      aebs:
+        type: object
+        description: >-
+          The Forward Collision Warning & Advanced Emergency Braking System
+          (FCW,AEBS) system status is changed or is engaged in the Vehicle an
+          event is triggered containing information.
+        properties:
+          eventType:
+            type: string
+            description: |2
+               ENABLED             - If the Forward Collision Warning & Emergency Brake system is enabled that has triggered the event
+               DISABLED            - If the Forward Collision Warning & Emergency Brake system is disabled that has triggered the event
+               MITIGATION_BRAKING  - If the Forward Collision Warning (FCW) system activated mitigation braking that has triggered the event
+               EMERGENCY_BRAKING   - If the Emergency Braking (EB) system activated emergency braking that has triggered the event
+            example: ENABLED
+          actorType:
+            type: string
+            description: >
+              Forward Collision Warning & Advanced Emergency Braking System
+              (FCW,AEBS) status change actorType that was ENABLED or DISABLED
+              by.
+               Possible values: DRIVER, VEHICLE
+            example: DRIVER
+        required:
+          - eventType
+      harsh:
+        type: object
+        description: >-
+          The vehicle speed is rapidly increased or reduced an event is
+          triggered containing information.
+        properties:
+          eventType:
+            type: string
+            description: |2
+               ACCELERATION - If the vehicle speed is rapidly increased that has triggered the event
+               DECELERATION - If the vehicle speed is rapidly reduced that has triggered the event
+            example: ACCELERATION
+        required:
+          - eventType
+      lks:
+        type: object
+        description: >-
+          The Lane Keeping Support (LKS) system status is changed in the Vehicle
+          an event is triggered containing information.
+        properties:
+          eventType:
+            type: string
+            description: |2
+               ENABLED - If the Lane Keeping Support (LKS) system is enabled that has triggered the event
+               DISABLED - If the Lane Keeping Support (LKS) system is disabled that has triggered the event
+            example: ENABLED
+          actorType:
+            type: string
+            description: >
+              The Lane Keeping Support (LKS) status change actorType that was
+              ENABLED or DISABLED by.
+               Possible values: DRIVER, VEHICLE
+            example: DRIVER
+        required:
+          - eventType
+          - actorType
+      distanceAlert:
+        type: object
+        description: >-
+          Distance alert helps the driver to keep a safe time gap to the vehicle
+          ahead. When the vehicle drives to close to the vehicle ahead and
+          adaptive cruise control id disabled, an event is sent, STARTED. 
+           When the vehicle keeps a safe distance again an event ENDED is sent. If the Distance alert is enabled or disabled by the driver an event ENABLED and DISABLED is sent.
+        properties:
+          eventType:
+            type: string
+            description: |2
+               STARTED  - Driving to close to another vehicle ahead.
+               ENDED    - Vehicle has increased distance and is no longer to close to the vehicle ahead.
+               ENABLED  - Distance alert is enabled by the driver. 
+               DISABLED - Distance alert is disabled by the driver.
+            example: ENABLED
+        required:
+          - eventType
+      lcs:
+        type: object
+        description: >-
+          The Lane Change Support (LCS) assists the driver in preventing blind
+          spot accidents during lane changes on the passenger side. 
+           If LCS is enabled or disabled by driver in the Vehicle an event ENABLED or DISABLED is sent.
+        properties:
+          eventType:
+            type: string
+            description: |2
+               ENABLED - LCS is enabled by the driver 
+               DISABLED - LCS is disabled by the driver 
+            example: ENABLED
+        required:
+          - eventType
+      unsafeLaneChange:
+        type: object
+        description: |-
+          The unsafeLaneChange event is derived from LCS and LKS functions.
+           It is triggered when there is an obstacle in the blind spot (detected by LCS) and driver changes lane (detected by LKS) NOTE: the only valid value is TRUE
+        properties:
+          eventType:
+            type: string
+            description: ' TRUE  - Driver attempted a lane change with obstacles in the blind spot area.'
+            example: 'TRUE'
+        required:
+          - eventType
+      chargingStatusInfo:
+        type: object
+        description: >-
+          Additional information can be provided if the trigger type is
+          BATTERY_PACK_CHARGING_STATUS_CHANGE. Either chargingStatusInfo OR
+          volvoGroupChargingStatusInfo can be provided depending on the event.
+        properties:
+          event:
+            type: string
+            description: |2
+               CHARGING_STARTED                  - Charging has started
+               CHARGING_COMPLETED                - Charging is completed
+               CHARGING_INTERRUPTED              - Charging has been interrupted (no error)
+               ERROR                             - An error occurred when charging
+               ESTIMATED_COMPLETION_TIME_CHANGED - The estimated time for completed charging has changed. (ESTIMATED_COMPLETION_TIME_CHANGED is not supported in this version)
+               TIMER                             - A predefined time has passed since last charge status update. (TIMER is not supported in this version)
+               CHARGING_LEVEL                    - The charging level has reached a predefined level. (CHARGING_LEVEL is not supported in this version)
+            enum:
+              - CHARGING_STARTED
+              - CHARGING_COMPLETED
+              - CHARGING_INTERRUPTED
+              - ERROR
+              - ESTIMATED_COMPLETION_TIME_CHANGED
+              - TIMER
+              - CHARGING_LEVEL
+            example: ERROR
+          estimatedDistanceToEmpty:
+            $ref: '#/definitions/EstimatedDistanceToEmpty'
+          hybridBatteryPackRemainingCharge:
+            $ref: '#/definitions/HybridBatteryPackRemainingCharge'
+          estimatedTimeBatteryPackChargingCompleted:
+            type: string
+            format: date-time
+            description: Estimated time when charging has reached the target level.
+            example: '2022-02-12T15:36:45Z'
+      volvoGroupChargingStatusInfo:
+        type: object
+        description: >-
+          Additional information can be provided if the trigger type is
+          BATTERY_PACK_CHARGING_STATUS_CHANGE. Either chargingStatusInfo OR
+          volvoGroupChargingStatusInfo can be provided depending on the event
+        properties:
+          event:
+            type: string
+            description: |2
+               CHARGING_DOWNGRADED               - The charging has been downgraded due to fluctuating power supply
+               CHARGING_RESUMED_NORMAL           - The charging has been restored to normal level
+            example: CHARGING_DOWNGRADED
+          estimatedDistanceToEmpty:
+            $ref: '#/definitions/EstimatedDistanceToEmpty'
+          hybridBatteryPackRemainingCharge:
+            $ref: '#/definitions/HybridBatteryPackRemainingCharge'
+          estimatedTimeBatteryPackChargingCompleted:
+            type: string
+            format: date-time
+            description: Estimated time when charging has reached the target level.
+            example: '2022-02-12T15:36:45Z'
+      batteryPackInfo:
+        type: object
+        description: >-
+          Additional information can be provided if the trigger type is
+          BATTERY_PACK_HIGH_DISCHARGE or BATTERY_PACK_ENERGY_USAGE.
+        properties:
+          triggerInfo:
+            type: string
+            description: |2-
+               Additional trigger information can be provided if the trigger event is BATTERY_PACK_ENERGY_USAGE.
+               Example values: WARNING, CRITICAL
+            example: WARNING
+          estimatedDistanceToEmpty:
+            $ref: '#/definitions/EstimatedDistanceToEmpty'
+          hybridBatteryPackRemainingCharge:
+            $ref: '#/definitions/HybridBatteryPackRemainingCharge'
+      chargingConnectionStatusInfo:
+        type: object
+        description: >-
+          Additional information can be provided if the trigger type is
+          BATTERY_PACK_CHARGING_CONNECTION_STATUS_CHANGE.
+        properties:
+          event:
+            type: string
+            description: >-
+              CONNECTING    - Vehicle is being connected to a charger
+              CONNECTED     - Vehicle is connected to a charger DISCONNECTING -
+              Vehicle is being disconnected from the charger DISCONNECTED  -
+              Vehicle is not connected to a charger ERROR         - An error
+              occurred
+            enum:
+              - CONNECTING
+              - CONNECTED
+              - DISCONNECTING
+              - DISCONNECTED
+              - ERROR
+            example: ERROR
+          eventDetail:
+            type: string
+            description: Details regarding the event. Content is OEM specific
+            example: VEHICLE_NOT_IN_POSITION
+      alarmInfo:
+        type: object
+        description: Detailed information regarding the alarm that was triggered.
+        properties:
+          alarmType:
+            type: string
+            description: |2-
+               THEFT - Theft alarm 
+               PANIC - Panic alarm
+            example: THEFT
+          alarmStatus:
+            type: string
+            description: TRIGGERED - The alarm has been fired/triggered
+            example: TRIGGERED
+          alarmDetails:
+            type: array
+            items:
+              type: string
+              description: |-
+                A list of reasons why the alarm was triggered. 
+                 DRIVER_DOOR_OPENED 
+                 PASSENGER_DOOR_OPENED 
+                 MOTION_SENSOR_TRIGGERED 
+                 CAB_TILTED 
+                 LUGGAGE_COMPARTMENT_OPENED 
+                 FRONT_HATCH_OPENED 
+                 TRAILER_ALARM_TRIGGERED 
+                 SIREN_CONNECTION_TAMPERED 
+                 DOORS_CONNECTION_TAMPERED 
+                 OTHER_TAMPERED_ISSUES 
+                 OTHER_ERROR
+              example:
+                - DRIVER_DOOR_CLOSED
+                - MOTION_SENSOR_TRIGGERED
+    required:
+      - alertType
+      - severity
+      - createdDateTime
+      - receivedDateTime
+      - vin
+  GNSSPositionObject:
+    type: object
+    properties:
+      latitude:
+        type: number
+        format: double
+        description: Latitude (WGS84 based)
+        example: 57.71727
+      longitude:
+        type: number
+        format: double
+        description: Longitude (WGS84 based)
+        example: 11.921161
+      heading:
+        type: integer
+        description: The direction of the vehicle (0-359)
+        example: 30
+      altitude:
+        type: integer
+        description: The altitude of the vehicle
+        example: 32
+      speed:
+        type: number
+        format: double
+        description: The GNSS(e.g. GPS)-speed in km/h
+        example: 54.5
+      positionDateTime:
+        type: string
+        format: date-time
+        description: The time of the position data
+    required:
+      - latitude
+      - longitude
+      - positionDateTime
+  DriverIdObject:
+    type: object
+    properties:
+      tachoDriverIdentification:
+        type: object
+        properties:
+          driverIdentification:
+            type: string
+            description: >-
+              The unique identification of a driver in a Member State. This
+              fields is formatted according the definition for
+              driverIdentification in COMMISSION REGULATION (EC) No 1360/2002
+              Annex 1b
+            example: 12345678901234
+          cardIssuingMemberState:
+            type: string
+            description: >-
+              The country alpha code of the Member State having issued the card.
+              This fields is formatted according the definition for NationAlpha
+              in COMMISSION REGULATION (EC) No 1360/2002 Annex 1b
+            example: S
+          driverAuthenticationEquipment:
+            type: string
+            description: >
+              Code to distinguish different types of equipment for the
+              tachograph application. See description of the field
+              'DriverAuthenticationEquipment' in COMMISSION REGULATION (EC) No
+              1360/2002 Annex 1b.
+               Possible values: RESERVED, DRIVER_CARD, CONTROL_CARD, COMPANY_CARD, MANUFACTURING_CARD, VEHICLE_UNIT, MOTION_SENSOR
+            example: DRIVER_CARD
+          cardReplacementIndex:
+            type: string
+            description: >-
+              A card replacement index. This fields is formatted according the
+              definition for CardReplacementIndex (chap 2.26) in: COMMISSION
+              REGULATION (EC) No 1360/2002 Annex 1b
+            example: 0
+          cardRenewalIndex:
+            type: string
+            description: >-
+              A card renewal index. This fields is formatted according the
+              definition for CardRenewalIndex (chap 2.25) in: COMMISSION
+              REGULATION (EC) No 1360/2002 Annex 1b
+            example: 0
+        required:
+          - driverIdentification
+          - cardIssuingMemberState
+      oemDriverIdentification:
+        type: object
+        properties:
+          idType:
+            type: string
+            description: 'Contains an optional id type (e.g. pin, USB, encrypted EU id)'
+            example: USB
+          oemDriverIdentification:
+            type: string
+            description: An OEM specific driver id.
+            example: ABC-123-DEF
+        required:
+          - idType
+          - oemDriverIdentification
+  VinProperty:
+    type: string
+    description: vehicle identification number. See ISO 3779 (17 characters)
+    example: ABC12345678901234
+  CreatedDateTimeProperty:
+    type: string
+    format: date-time
+    description: When the data was retrieved in the vehicle in iso8601 format.
+  ReceivedDateTimeProperty:
+    type: string
+    format: date-time
+    description: >-
+      Reception at Server. To be used for handling of "more data available" in
+      iso8601 format.
+  EstimatedDistanceToEmpty:
+    type: object
+    description: Estimated distance to empty (tanks and/or battery packs) in meters
+    properties:
+      total:
+        type: integer
+        description: >-
+          Estimated distance to empty, summarizing fuel, gas and battery in
+          meters
+        format: int64
+        example: 503700
+      fuel:
+        type: integer
+        description: 'Estimated distance to empty, fuel tank, in meters'
+        format: int64
+        example: 457600
+      gas:
+        type: integer
+        description: 'Estimated distance to empty, gas tank, in meters'
+        format: int64
+        example: 299200
+      batteryPack:
+        type: integer
+        description: 'Estimated distance to empty, battery pack, in meters'
+        format: int64
+        example: 150900
+  HybridBatteryPackRemainingCharge:
+    type: number
+    format: double
+    description: |-
+      Indicates the hybrid battery pack remaining charge.
+       0% means no charge remaining,
+       100% means full charge remaining.
+       Is used as well for full electrical vehicles
+    example: 76
+responses:
+  BadRequest:
+    description: >-
+      The server cannot or will not process the request due to an apparent
+      client error (e.g., malformed request syntax, invalid request message
+      framing, or deceptive request routing) Possible reason mandatory field
+      missing, e.g. Authentication Header empty or missing
+  Unauthorized:
+    description: >-
+      Similar to 403 Forbidden, but specifically for use when authentication is
+      required and has failed or has not yet been provided. The response must
+      include a WWW-Authenticate header field containing a challenge applicable
+      to the requested resource. See Basic access authentication and Digest
+      access authentication. Possible reason Wrong credentials and/or Login
+      credentials expired
+  Forbidden:
+    description: >-
+      The request was a valid request, but the server is refusing to respond to
+      it. Unlike a 401 Unauthorized response, authenticating will make no
+      difference. On servers where authentication is required, this commonly
+      means that the provided credentials were successfully authenticated but
+      that the credentials still do not grant the client permission to access
+      the resource (e.g. a recognized user attempting to access restricted
+      content) Possible reason Insufficient rights for the service, no rights on
+      any service of this vehicle and/or Response is too large
+  NotFound:
+    description: >-
+      The requested resource could not be found but may be available again in
+      the future. Subsequent requests by the client are permissible Possible
+      reason vehicle unknown and/or rFMS-Version not supported
+  NotAcceptable:
+    description: Possible reason unsupported Accept parameter sent
+  TooManyRequests:
+    description: >-
+      The user has sent too many requests in a given amount of time. Intended
+      for use with rate limiting schemes Possible reason Request sent too often
+      and/or Max concurrent calls
