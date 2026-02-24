@@ -1462,14 +1462,13 @@ class DW_Treviso_Tuning(SQLServerTuning):
         super().__init__()
 
 class DB2Database:
-    def __init__(self,config_section):
-        config = get_config()
-        self.driver = config[config_section]['Driver'] #type: ignore
-        self.server = config[config_section]['Server'] #type: ignore
-        self.database = config[config_section]['Database'] #type: ignore
-        self.username = config[config_section]['User'] #type: ignore
-        self.password = config[config_section]['Password'] #type: ignore
-        self.port = config[config_section]['Port'] #type: ignore
+    def __init__(self):
+        self.driver = 'IBM i Access ODBC Driver'
+        self.server = 'VF08.VSERVICES.NET'
+        self.database = 'BRTH0PD10'
+        self.username = 'MB00645' 
+        self.password = 'K#T@HmJZS7lawqrlO'
+        self.port = 23
         self.conn_string = f"Driver={{{self.driver}}};System={self.server};Database={self.database};Uid={self.username};Pwd={self.password};"
 
     def TestConnection(self):
@@ -1512,8 +1511,4 @@ class DB2Database:
 
 class BR_DB2(DB2Database):
     def __init__(self):
-        super().__init__('BD_BR_DB2')
-
-class BR_DB2_2(DB2Database):
-    def __init__(self):
-        super().__init__('BD_BR_DB2_REDUNDANCIA')
+        super().__init__()

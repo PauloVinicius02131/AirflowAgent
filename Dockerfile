@@ -3,23 +3,23 @@ FROM apache/airflow:3.1.7
 
 USER root
 
-# 1. Ajuste do Usuário: Mudamos o UID do airflow para 1001. 
-# Não tentamos modificar o grupo, apenas garantimos que o usuário 1001 exista e 
-# pertença ao grupo 0 (root), que já tem as permissões necessárias.
+# 1. Ajuste do Usuário (Sua config original)
 RUN usermod -u 1001 airflow && gpasswd -a airflow root
 
-
-# ----------------------------
-# System deps + MS ODBC 17 + tools (bcp/sqlcmd)
-# ----------------------------
+# ------------------------------------------------------------
+# 2. System deps + MS ODBC 17 + IBM iAccess Dependencies
+# ------------------------------------------------------------
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
       curl gnupg2 ca-certificates apt-transport-https \
       unixodbc unixodbc-dev \
+      odbcinst \
       gcc g++ \
+      # Adicionamos o procps que ajuda o instalador da IBM a verificar processos
+      procps \
     ; \
-    # Remove qualquer repo anterior da Microsoft
+    # Remove qualquer repo anterior da Microsoft (limpeza preventiva)
     find /etc/apt/sources.list.d -maxdepth 1 -type f -name "*.list" -print0 \
       | xargs -0 -I {} sh -c 'grep -q "packages.microsoft.com" "{}" && rm -f "{}" || true'; \
     \
@@ -34,33 +34,43 @@ RUN set -eux; \
       msodbcsql17 \
       mssql-tools \
     ; \
-    # Ajuste dos links simbólicos para o caminho do mssql-tools (sem o "18")
+    # Ajuste dos links simbólicos
     ln -sf /opt/mssql-tools/bin/bcp /usr/local/bin/bcp; \
     ln -sf /opt/mssql-tools/bin/sqlcmd /usr/local/bin/sqlcmd; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
+# ------------------------------------------------------------
+# 3. Instalação do Driver IBM DB2 (iSeries)
+# ------------------------------------------------------------
+# Usando o nome exato do arquivo que você confirmou ter na pasta
+COPY ibm-iaccess-1.1.0.28-1.0.amd64.deb /tmp/ibm-iaccess.deb
+
+RUN set -eux; \
+    # Instalamos o .deb. O dpkg pode reclamar de dependências, o 'apt-get install -f' resolve se necessário.
+    dpkg -i /tmp/ibm-iaccess.deb || apt-get install -f -y; \
+    rm /tmp/ibm-iaccess.deb; \
+    # Verificação do registro do driver
+    odbcinst -q -d
+
 # ----------------------------
-# Permissions (Ajustadas para o UID 1001 e Grupo Root)
+# 4. Permissions (Mantendo seu padrão 1001:0)
 # ----------------------------
 RUN set -eux; \
     mkdir -p /opt/airflow/config /opt/airflow/auth /opt/airflow/logs /opt/airflow/dags /opt/airflow/plugins; \
-    # Mudamos a posse para o UID 1001 e GID 0
     chown -R 1001:0 /opt/airflow /home/airflow; \
     chmod -R g+rwX /opt/airflow /home/airflow
 
-# Voltamos para o usuário 1001 (o seu 'paulo' do WSL)
 USER 1001
 
 # ----------------------------
-# IMPORTANT: Install Python deps with Airflow constraints
-# This prevents provider/core mismatch (your current crash)
+# 5. Python deps com Constraints
 # ----------------------------
 ARG AIRFLOW_VERSION=3.1.7
 
-# Descobre a versão exata do Python da imagem (ex.: 3.12) e baixa a constraints correspondente
 RUN set -eux; \
-    PY_VER="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"; \
+    # Simplificamos o comando Python para evitar erro de caractere de escape
+    PY_VER=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"); \
     echo "Using Airflow constraints: ${AIRFLOW_VERSION} / Python ${PY_VER}"; \
     curl -fsSL \
       "https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PY_VER}.txt" \
@@ -68,12 +78,6 @@ RUN set -eux; \
 
 COPY --chown=airflow:0 requirements.txt /requirements.txt
 
-# Instala requirements TRAVADO nas constraints do Airflow (evita quebrar celery provider)
 RUN set -eux; \
     pip install --no-cache-dir -r /requirements.txt --constraint /tmp/constraints.txt; \
     rm -f /tmp/constraints.txt
-
-# (Opcional) sanity check rápido: mostra versões no build log
-RUN set -eux; \
-    python -c "import airflow; print('Airflow:', airflow.__version__)"; \
-    pip show apache-airflow-providers-celery >/dev/null 2>&1 && pip show apache-airflow-providers-celery | sed -n '1,80p' || true
