@@ -10,7 +10,7 @@ RUN usermod -u 1001 airflow && gpasswd -a airflow root
 
 
 # ----------------------------
-# System deps + MS ODBC + tools (bcp/sqlcmd)
+# System deps + MS ODBC 17 + tools (bcp/sqlcmd)
 # ----------------------------
 RUN set -eux; \
     apt-get update; \
@@ -19,7 +19,7 @@ RUN set -eux; \
       unixodbc unixodbc-dev \
       gcc g++ \
     ; \
-    # Remove qualquer repo anterior da Microsoft (evita conflito Signed-By)
+    # Remove qualquer repo anterior da Microsoft
     find /etc/apt/sources.list.d -maxdepth 1 -type f -name "*.list" -print0 \
       | xargs -0 -I {} sh -c 'grep -q "packages.microsoft.com" "{}" && rm -f "{}" || true'; \
     \
@@ -29,12 +29,14 @@ RUN set -eux; \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
       > /etc/apt/sources.list.d/microsoft-prod.list; \
     apt-get update; \
+    # Instalação da Versão 17
     ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
-      msodbcsql18 \
-      mssql-tools18 \
+      msodbcsql17 \
+      mssql-tools \
     ; \
-    ln -sf /opt/mssql-tools18/bin/bcp /usr/local/bin/bcp; \
-    ln -sf /opt/mssql-tools18/bin/sqlcmd /usr/local/bin/sqlcmd; \
+    # Ajuste dos links simbólicos para o caminho do mssql-tools (sem o "18")
+    ln -sf /opt/mssql-tools/bin/bcp /usr/local/bin/bcp; \
+    ln -sf /opt/mssql-tools/bin/sqlcmd /usr/local/bin/sqlcmd; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
